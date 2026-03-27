@@ -1,0 +1,31 @@
+import { createBrowserRouter } from "react-router";
+import { HomePage } from "./pages/HomePage";
+import { MockTestPage } from "./pages/MockTestPage";
+import { ResultPage } from "./pages/ResultPage";
+import { LoginPage } from "./pages/LoginPage";
+import { LandingPage } from "./pages/LandingPage";
+import { Layout } from "./components/Layout";
+import { AuthLayout } from "./components/AuthLayout";
+
+export const router = createBrowserRouter([
+  {
+    path: "/login",
+    Component: LoginPage,
+  },
+  {
+    path: "/",
+    Component: AuthLayout,
+    children: [
+      { index: true, Component: LandingPage },
+    ],
+  },
+  {
+    path: "/dashboard",
+    Component: Layout,
+    children: [
+      { index: true, Component: HomePage },
+      { path: "mock-test/:testId", Component: MockTestPage },
+      { path: "result/:resultId", Component: ResultPage },
+    ],
+  },
+]);
