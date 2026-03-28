@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { mockTests } from "../data/mockData";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { Logo } from "../components/Logo";
+import { LandingPageHeader } from "../components/LandingPageHeader";
+import { MockTestCard } from "../components/MockTestCard";
+import { useTests } from "../hooks/useTests";
 import {
   Clock,
   FileText,
@@ -17,17 +18,19 @@ import {
   CheckCircle,
   Users,
   BarChart,
-  Shield
+  Shield,
+  AlertCircle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
 
 export function LandingPage() {
   const navigate = useNavigate();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const { tests, loading, error } = useTests();
 
-  const totalTests = mockTests.length;
-  const totalQuestions = mockTests.reduce((acc, test) => acc + test.questions.length, 0);
-  const uniqueSubjects = Array.from(new Set(mockTests.map((test) => test.subject)));
+  const totalTests = tests.length;
+  const totalQuestions = tests.reduce((acc, test) => acc + test.totalMarks, 0);
+  const uniqueSubjects = Array.from(new Set(tests.map((test) => test.subject)));
 
   const handleTestClick = () => {
     setShowLoginDialog(true);
@@ -75,28 +78,7 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <Logo className="h-10 w-10" />
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  bpscprep.in
-                </h1>
-                <p className="text-xs text-gray-500">Your BPSC Success Partner</p>
-              </div>
-            </div>
-            <Button
-              onClick={handleLoginRedirect}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              Login / Sign Up
-            </Button>
-          </div>
-        </div>
-      </header>
+      <LandingPageHeader />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="space-y-12">
@@ -238,64 +220,58 @@ export function LandingPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockTests.slice(0, 6).map((test) => (
-                <Card key={test.id} className="hover:shadow-lg transition-all border hover:border-purple-300 flex flex-col">
-                  <CardHeader>
-                    <div className="flex items-start justify-between mb-2">
-                      <Badge className="bg-gradient-to-r from-blue-600 to-purple-600">
-                        {test.subject}
-                      </Badge>
-                      {test.year && (
-                        <Badge variant="outline" className="gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {test.year}
-                        </Badge>
-                      )}
-                    </div>
-                    <CardTitle className="text-lg">{test.title}</CardTitle>
-                    <CardDescription>Previous year question paper</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col">
-                    <div className="flex-1">
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-gray-50 p-3 rounded-lg text-center">
-                          <Clock className="h-4 w-4 mx-auto mb-1 text-gray-600" />
-                          <p className="text-xs font-semibold">{test.duration} min</p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg text-center">
-                          <FileText className="h-4 w-4 mx-auto mb-1 text-gray-600" />
-                          <p className="text-xs font-semibold">{test.questions.length} Qs</p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg text-center">
-                          <BookOpen className="h-4 w-4 mx-auto mb-1 text-gray-600" />
-                          <p className="text-xs font-semibold">{test.totalMarks} Marks</p>
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 mt-4"
-                      onClick={handleTestClick}
-                    >
-                      Start Test
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                </div>
+                <p className="text-gray-600 mt-4">Loading mock tests...</p>
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6 flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-red-900">Failed to load tests</h3>
+                  <p className="text-red-700 text-sm mt-1">{error.message}</p>
+                  <Button 
+                    size="sm"
+                    onClick={() => window.location.reload()}
+                    className="mt-3 bg-red-600 hover:bg-red-700"
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            ) : tests.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {tests.slice(0, 6).map((test) => (
+                    <MockTestCard 
+                      key={test.id}
+                      test={test}
+                      onStartTest={handleTestClick}
+                    />
+                  ))}
+                </div>
 
-            {mockTests.length > 6 && (
-              <div className="text-center mt-8">
-                <p className="text-gray-600 mb-4">
-                  +{mockTests.length - 6} more tests available
-                </p>
-                <Button 
-                  size="lg"
-                  onClick={handleLoginRedirect}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                >
-                  View All Tests
-                </Button>
+                {tests.length > 6 && (
+                  <div className="text-center mt-8">
+                    <p className="text-gray-600 mb-4">
+                      +{tests.length - 6} more tests available
+                    </p>
+                    <Button 
+                      size="lg"
+                      onClick={handleLoginRedirect}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      View All Tests
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-600 text-lg">No tests available at the moment.</p>
               </div>
             )}
           </div>

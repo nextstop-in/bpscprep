@@ -13,7 +13,8 @@ export interface MockTest {
   year?: string;
   duration: number; // in minutes
   totalMarks: number;
-  questions: Question[];
+  totalQuestions: number;
+  questions?: Question[];
   expiryDate?: string; // ISO date string
   weekNumber?: number;
 }
@@ -381,6 +382,7 @@ const generateWeeklyTests = (): MockTest[] => {
         subject: subject.name,
         duration: subject.duration,
         totalMarks: subject.marks,
+        totalQuestions: weekQuestions.length,
         questions: weekQuestions,
         expiryDate: generateExpiryDate(week),
         weekNumber: week,
@@ -409,6 +411,7 @@ const generateWeeklyTests = (): MockTest[] => {
       subject: "Full Mock",
       duration: 180,
       totalMarks: allWeekQuestions.length * 5,
+      totalQuestions: allWeekQuestions.length,
       questions: allWeekQuestions,
       expiryDate: generateExpiryDate(week),
       weekNumber: week,
@@ -429,6 +432,7 @@ export const legacyTests: MockTest[] = [
     year: "2023",
     duration: 120,
     totalMarks: 100,
+    totalQuestions: currentAffairsQuestions.length,
     questions: [
       ...currentAffairsQuestions,
     ],
@@ -440,6 +444,7 @@ export const legacyTests: MockTest[] = [
     year: "2022",
     duration: 90,
     totalMarks: 75,
+    totalQuestions: historyQuestions.length,
     questions: [
       ...historyQuestions,
     ],
@@ -451,6 +456,7 @@ export const legacyTests: MockTest[] = [
     year: "2023",
     duration: 90,
     totalMarks: 75,
+    totalQuestions: geographyQuestions.length,
     questions: [
       ...geographyQuestions,
     ],
@@ -462,6 +468,7 @@ export const legacyTests: MockTest[] = [
     year: "2022",
     duration: 120,
     totalMarks: 100,
+    totalQuestions: polityQuestions.length,
     questions: [
       ...polityQuestions,
     ],
@@ -473,6 +480,7 @@ export const legacyTests: MockTest[] = [
     year: "2023",
     duration: 90,
     totalMarks: 75,
+    totalQuestions: economicsQuestions.length,
     questions: [
       ...economicsQuestions,
     ],
@@ -484,6 +492,7 @@ export const legacyTests: MockTest[] = [
     year: "2023",
     duration: 60,
     totalMarks: 50,
+    totalQuestions: aptitudeQuestions.length,
     questions: [
       ...aptitudeQuestions,
     ],
@@ -495,6 +504,7 @@ export const legacyTests: MockTest[] = [
     year: "2022",
     duration: 60,
     totalMarks: 50,
+    totalQuestions: reasoningQuestions.length,
     questions: [
       ...reasoningQuestions,
     ],
@@ -506,6 +516,7 @@ export const legacyTests: MockTest[] = [
     year: "2023",
     duration: 60,
     totalMarks: 50,
+    totalQuestions: englishGrammarQuestions.length,
     questions: [
       ...englishGrammarQuestions,
     ],
