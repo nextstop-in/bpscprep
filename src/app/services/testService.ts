@@ -15,6 +15,16 @@ interface ApiTest {
   expiry: string;
 }
 
+interface ApiTestDetail {
+  testId: string;
+  duration: number;
+  questions: Array<{
+    id: number;
+    question: string;
+    options: string[];
+  }>;
+}
+
 const API_BASE_URL = "https://66e2rvyfvj.execute-api.ap-south-1.amazonaws.com/prod";
 
 // Map API subject names to standard subject names
@@ -69,5 +79,46 @@ export const fetchTestById = async (testId: string): Promise<MockTest | null> =>
   } catch (error) {
     console.error("Failed to fetch test:", error);
     return null;
+  }
+};
+
+/**
+ * Fetch test details with questions from the API
+ * @param testId - The test ID to fetch details for
+ * @returns Promise with test data including questions
+ */
+export const fetchTestDetails = async (testId: string): Promise<MockTest> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/tests/${testId}`);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data: ApiTestDetail = await response.json();
+    
+    // Transform question format to match our Question interface
+    const questions = data.questions.map((q, index) => ({
+      id: `q${q.id || index + 1}`,
+      question: q.question,
+      options: q.options,
+      correctAnswer: 0, // API doesn't return correct answer during exam
+      subject: "", // Subject not provided by API
+    }));
+
+    return {
+      id: data.testId,
+      title: `Test ${data.testId}`,
+      subject: "",
+      duration: data.duration,
+      totalMarks: questions.length,
+      totalQuestions: questions.length,
+      questions,
+      expiryDate: "",
+      year: new Date().getFullYear().toString(),
+    };
+  } catch (error) {
+    console.error("Failed to fetch test details:", error);
+    throw error;
   }
 };

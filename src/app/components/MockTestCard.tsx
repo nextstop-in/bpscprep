@@ -2,16 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Clock, FileText, BookOpen, Calendar } from "lucide-react";
-
-interface MockTest {
-  id: string;
-  title: string;
-  subject: string;
-  year?: string;
-  duration: number;
-  totalQuestions: number;
-  totalMarks: number;
-}
+import type { MockTest } from "../data/mockData";
 
 interface MockTestCardProps {
   test: MockTest;

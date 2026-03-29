@@ -1,15 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchMockTests } from "../services/testService";
-
-interface MockTest {
-  id: string;
-  title: string;
-  subject: string;
-  year?: string;
-  duration: number;
-  totalQuestions: number;
-  totalMarks: number;
-}
+import type { MockTest } from "../data/mockData";
 
 interface UseTestsResult {
   tests: MockTest[];

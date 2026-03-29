@@ -4,11 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { LandingPageHeader } from "../components/LandingPageHeader";
-import { MockTestCard } from "../components/MockTestCard";
-import { useTests } from "../hooks/useTests";
 import {
-  Clock,
-  FileText,
   BookOpen,
   Sparkles,
   Target,
@@ -18,19 +14,13 @@ import {
   CheckCircle,
   Users,
   BarChart,
-  Shield,
-  AlertCircle
+  Shield
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
 
 export function LandingPage() {
   const navigate = useNavigate();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
-  const { tests, loading, error } = useTests();
-
-  const totalTests = tests.length;
-  const totalQuestions = tests.reduce((acc, test) => acc + test.totalMarks, 0);
-  const uniqueSubjects = Array.from(new Set(tests.map((test) => test.subject)));
 
   const handleTestClick = () => {
     setShowLoginDialog(true);
@@ -113,10 +103,10 @@ export function LandingPage() {
                 </Button>
                 <Button
                   size="lg"
-                  onClick={() => document.getElementById('tests')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={handleLoginRedirect}
                   className="bg-transparent border-2 border-white text-white hover:bg-white/20 hover:text-white text-lg px-10 h-14 rounded-full font-semibold shadow-lg backdrop-blur-sm"
                 >
-                  Explore Tests
+                  View Tests
                 </Button>
               </div>
 
@@ -125,21 +115,21 @@ export function LandingPage() {
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5">
                   <div className="flex items-center gap-3 mb-2">
                     <BookOpen className="h-6 w-6" />
-                    <span className="text-3xl font-bold">{totalTests}</span>
+                    <span className="text-3xl font-bold">168</span>
                   </div>
                   <p className="text-sm text-blue-100">Mock Tests</p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5">
                   <div className="flex items-center gap-3 mb-2">
-                    <FileText className="h-6 w-6" />
-                    <span className="text-3xl font-bold">{totalQuestions}</span>
+                    <Award className="h-6 w-6" />
+                    <span className="text-3xl font-bold">8400+</span>
                   </div>
                   <p className="text-sm text-blue-100">Questions</p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5">
                   <div className="flex items-center gap-3 mb-2">
-                    <Award className="h-6 w-6" />
-                    <span className="text-3xl font-bold">{uniqueSubjects.length}</span>
+                    <Target className="h-6 w-6" />
+                    <span className="text-3xl font-bold">8</span>
                   </div>
                   <p className="text-sm text-blue-100">Subjects</p>
                 </div>
@@ -208,8 +198,8 @@ export function LandingPage() {
               </div>
             </div>
           </div>
-
-          {/* Available Tests Preview */}
+{/* 
+          Available Tests Preview
           <div id="tests">
             <div className="text-center mb-10">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
@@ -274,7 +264,7 @@ export function LandingPage() {
                 <p className="text-gray-600 text-lg">No tests available at the moment.</p>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* CTA Section */}
           <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-12 text-center text-white">

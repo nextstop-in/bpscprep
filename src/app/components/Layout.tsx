@@ -79,11 +79,13 @@ export function Layout() {
             <Outlet />
           </div>
 
-          {/* Right Sidebar */}
-          <div className="w-80 space-y-6">
-            <ToppersList />
-            <ImportantTopics />
-          </div>
+          {/* Right Sidebar - Hidden on mock test pages */}
+          {!location.pathname.includes("/mock-test/") && (
+            <div className="w-80 space-y-6">
+              <ToppersList />
+              <ImportantTopics />
+            </div>
+          )}
         </div>
       </div>
     </div>
