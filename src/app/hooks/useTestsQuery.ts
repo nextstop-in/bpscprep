@@ -62,7 +62,7 @@ export const useFullMockTestsQuery = (): UseQueryResult<MockTest[], Error> => {
     queryKey: ["tests", "fullmock"],
     queryFn: async () => {
       const tests = await fetchMockTests();
-      return tests.filter((t) => t.subject === "FULL");
+      return tests.filter((t) => t.subject === "ALL"); // Assuming "ALL" indicates full mock tests
     },
     staleTime: CACHE_CONFIG.staleTime,
     gcTime: CACHE_CONFIG.gcTime,
@@ -84,7 +84,7 @@ export const useSubjectWiseTestsQuery = (): UseQueryResult<
     queryKey: ["tests", "subjectwise"],
     queryFn: async () => {
       const tests = await fetchMockTests();
-      return tests.filter((t) => t.subject !== "FULL");
+      return tests.filter((t) => t.subject !== "ALL");
     },
     staleTime: CACHE_CONFIG.staleTime,
     gcTime: CACHE_CONFIG.gcTime,

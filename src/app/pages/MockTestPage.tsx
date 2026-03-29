@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
+import { useAuth } from "../context/AuthContext";
 import { useTestDetailsQuery } from "../hooks/useTestsQuery";
 import type { Question, MockTest } from "../data/mockData";
+import { submitAttempt } from "../services/testService";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
@@ -14,10 +16,14 @@ import { Skeleton } from "../components/ui/skeleton";
 export function MockTestPage() {
   const { testId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: number }>({});
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string>("");
+
+
 
   // Fetch test details from API
   const { data: test, isLoading, error } = useTestDetailsQuery(testId);
@@ -65,10 +71,41 @@ export function MockTestPage() {
     }
   };
 
-  const handleSubmitTest = () => {
+  const handleSubmitTest = async () => {
     if (!test || !test.questions) return;
-    
+
     setIsSubmitting(true);
+
+    const payloadAnswers: Record<string, string> = {};
+    test.questions.forEach((question, index) => {
+      const userSelectedIndex = answers[question.id];
+      if (userSelectedIndex !== undefined && userSelectedIndex !== null) {
+        payloadAnswers[(index + 1).toString()] = question.options[userSelectedIndex];
+      } else {
+        payloadAnswers[(index + 1).toString()] = ""; // Mark unselected questions as empty string
+      }
+    });
+
+    const timeTaken = Math.max(test.duration * 60 - timeRemaining, 0);
+    const weekId = test.weekId || "unknown";
+    const attemptPayload = {
+      userId: user?.id || "user123",
+      testId: test.id,
+      weekId,
+      answers: payloadAnswers,
+      timeTaken,
+    };
+
+    let submittedToApi = true;
+    try {
+      await submitAttempt(attemptPayload);
+      setSubmissionError("");
+    } catch (error) {
+      submittedToApi = false;
+      setSubmissionError(
+        "Unable to submit test to server. Result will be saved locally."
+      );
+    }
 
     // Calculate score
     let correctAnswers = 0;
@@ -91,11 +128,14 @@ export function MockTestPage() {
       totalQuestions: test.questions.length,
       answers,
       date: new Date().toISOString(),
+      timeTaken,
+      submittedToApi,
     };
 
     const existingResults = JSON.parse(localStorage.getItem("bpsc_results") || "[]");
     localStorage.setItem("bpsc_results", JSON.stringify([...existingResults, result]));
 
+    setIsSubmitting(false);
     navigate(`/dashboard/result/${resultId}`);
   };
 
@@ -239,16 +279,16 @@ export function MockTestPage() {
                   Next
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-              ) : (
-                <Button
-                  onClick={handleSubmitTest}
-                  disabled={isSubmitting}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  Submit Test
-                </Button>
-              )}
+              ) : null}
+
+              <Button
+                onClick={handleSubmitTest}
+                disabled={isSubmitting}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Submit Test
+              </Button>
             </div>
           </div>
 
@@ -258,6 +298,12 @@ export function MockTestPage() {
                 You have {test.questions.length - answeredCount} unanswered question(s). Make sure to
                 answer all questions before submitting.
               </AlertDescription>
+            </Alert>
+          )}
+
+          {submissionError && (
+            <Alert variant="destructive">
+              <AlertDescription>{submissionError}</AlertDescription>
             </Alert>
           )}
         </div>

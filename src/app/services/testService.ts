@@ -38,7 +38,7 @@ const subjectMapping: Record<string, string> = {
 };
 
 // Transform API response to MockTest format
-const transformApiResponse = (apiTest: ApiTest): MockTest => {
+const transformApiResponse = (apiTest: ApiTest, weekId: string): MockTest => {
   return {
     id: apiTest.testId,
     title: apiTest.title,
@@ -49,6 +49,7 @@ const transformApiResponse = (apiTest: ApiTest): MockTest => {
     questions: [], // Questions will be fetched separately when test is opened
     expiryDate: apiTest.expiry,
     year: new Date(apiTest.expiry).getFullYear().toString(),
+    weekId,
   };
 };
 
@@ -63,7 +64,7 @@ export const fetchMockTests = async (): Promise<MockTest[]> => {
     const data: ApiResponse = await response.json();
     
     // Transform API tests to MockTest format
-    const tests = data.tests.map(transformApiResponse);
+    const tests = data.tests.map(apiTest => transformApiResponse(apiTest, data.weekId));
     
     return tests;
   } catch (error) {
@@ -82,13 +83,12 @@ export const fetchTestById = async (testId: string): Promise<MockTest | null> =>
   }
 };
 
-/**
- * Fetch test details with questions from the API
- * @param testId - The test ID to fetch details for
- * @returns Promise with test data including questions
- */
 export const fetchTestDetails = async (testId: string): Promise<MockTest> => {
   try {
+    // First get the test from the list to get weekId
+    const tests = await fetchMockTests();
+    const testFromList = tests.find(t => t.id === testId);
+    
     const response = await fetch(`${API_BASE_URL}/tests/${testId}`);
     
     if (!response.ok) {
@@ -116,9 +116,39 @@ export const fetchTestDetails = async (testId: string): Promise<MockTest> => {
       questions,
       expiryDate: "",
       year: new Date().getFullYear().toString(),
+      weekId: testFromList?.weekId || "unknown",
     };
   } catch (error) {
     console.error("Failed to fetch test details:", error);
+    throw error;
+  }
+};
+
+export interface AttemptPayload {
+  userId: string;
+  testId: string;
+  weekId: string;
+  answers: Record<string, string>;
+  timeTaken: number;
+}
+
+export const submitAttempt = async (attempt: AttemptPayload) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/attempt`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(attempt),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Submit attempt API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to submit attempt:", error);
     throw error;
   }
 };

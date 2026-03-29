@@ -17,6 +17,7 @@ export interface MockTest {
   questions?: Question[];
   expiryDate?: string; // ISO date string
   weekNumber?: number;
+  weekId?: string;
 }
 
 export interface Topper {
