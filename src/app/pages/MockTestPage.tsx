@@ -97,8 +97,10 @@ export function MockTestPage() {
     };
 
     let submittedToApi = true;
+    let attemptId: string | null = null;
     try {
-      await submitAttempt(attemptPayload);
+      const response = await submitAttempt(attemptPayload);
+      attemptId = response.attemptId || response.id; // Assuming the response contains attemptId
       setSubmissionError("");
     } catch (error) {
       submittedToApi = false;
@@ -130,6 +132,7 @@ export function MockTestPage() {
       date: new Date().toISOString(),
       timeTaken,
       submittedToApi,
+      attemptId,
     };
 
     const existingResults = JSON.parse(localStorage.getItem("bpsc_results") || "[]");

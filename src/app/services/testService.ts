@@ -152,3 +152,32 @@ export const submitAttempt = async (attempt: AttemptPayload) => {
     throw error;
   }
 };
+
+export interface AttemptResult {
+  score: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  attemptedAnswers: Array<{
+    questionId: number;
+    question: string;
+    attemptedAnswer: string;
+    correctAnswer: string;
+    isCorrect: boolean;
+  }>;
+}
+
+export const fetchAttemptResult = async (attemptId: string): Promise<AttemptResult> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/attempt/${attemptId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Fetch attempt result API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to fetch attempt result:", error);
+    throw error;
+  }
+};

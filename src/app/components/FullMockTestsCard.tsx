@@ -1,7 +1,7 @@
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Clock, AlertCircle, RefreshCw } from "lucide-react";
+import { Sparkles, AlertCircle, RefreshCw } from "lucide-react";
 import { isTestExpired } from "../utils/calculations";
 import type { MockTest } from "../data/mockData";
 
@@ -13,12 +13,12 @@ interface FullMockTestsCardProps {
 
 export function FullMockTestsCard({ test, isCompleted, onStartTest }: FullMockTestsCardProps) {
   const expired = isTestExpired(test.expiryDate);
-  const daysNum = !test.expiryDate
-    ? Infinity
-    : Math.ceil(
+  const daysNum = test.expiryDate
+    ? Math.ceil(
         (new Date(test.expiryDate).getTime() - new Date().getTime()) /
           (1000 * 60 * 60 * 24)
-      );
+      )
+    : null;
 
   return (
     <Card
@@ -29,7 +29,7 @@ export function FullMockTestsCard({ test, isCompleted, onStartTest }: FullMockTe
       <CardHeader>
         <div className="flex items-start justify-between mb-2">
           <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-            Week {test.weekNumber}
+            Full Mock Test
           </Badge>
           {isCompleted && (
             <Badge className="bg-green-100 text-green-700 border-green-300">
@@ -45,16 +45,19 @@ export function FullMockTestsCard({ test, isCompleted, onStartTest }: FullMockTe
         </div>
         <CardTitle className="text-lg">{test.title}</CardTitle>
         <CardDescription className="flex items-center gap-2 mt-2">
-          <Clock className="h-4 w-4" />
-          {!expired && daysNum < 7 && (
+          <Sparkles className="h-4 w-4" />
+          {expired && <span className="text-gray-500">Expired</span>}
+          {!expired && daysNum === null && (
+            <span className="text-blue-600 font-medium">AI generated tests</span>
+          )}
+          {!expired && daysNum !== null && daysNum < 7 && (
             <span className="text-orange-600 font-medium">
               {daysNum} day{daysNum !== 1 ? "s" : ""} remaining
             </span>
           )}
-          {!expired && daysNum >= 7 && (
+          {!expired && daysNum !== null && daysNum >= 7 && (
             <span className="text-gray-600">Expires in {daysNum} days</span>
           )}
-          {expired && <span className="text-gray-500">Expired</span>}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">

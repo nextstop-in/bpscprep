@@ -1,7 +1,7 @@
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Clock, AlertCircle, RefreshCw } from "lucide-react";
+import { Sparkles, AlertCircle, RefreshCw } from "lucide-react";
 import { isTestExpired } from "../utils/calculations";
 import type { MockTest } from "../data/mockData";
 
@@ -13,12 +13,12 @@ interface SubjectWiseTestsCardProps {
 
 export function SubjectWiseTestsCard({ test, isCompleted, onStartTest }: SubjectWiseTestsCardProps) {
   const expired = isTestExpired(test.expiryDate);
-  const daysNum = !test.expiryDate
-    ? Infinity
-    : Math.ceil(
+  const daysNum = test.expiryDate
+    ? Math.ceil(
         (new Date(test.expiryDate).getTime() - new Date().getTime()) /
           (1000 * 60 * 60 * 24)
-      );
+      )
+    : null;
 
   return (
     <Card
@@ -32,7 +32,7 @@ export function SubjectWiseTestsCard({ test, isCompleted, onStartTest }: Subject
             <Badge variant="secondary" className="bg-blue-100 text-blue-700">
               {test.subject}
             </Badge>
-            <Badge variant="outline">W{test.weekNumber}</Badge>
+            {/* <Badge variant="outline">W{test.weekId}</Badge> */}
           </div>
           {isCompleted && (
             <Badge className="bg-green-100 text-green-700 border-green-300">
@@ -48,16 +48,19 @@ export function SubjectWiseTestsCard({ test, isCompleted, onStartTest }: Subject
         )}
         <CardTitle className="text-base">{test.title}</CardTitle>
         <CardDescription className="flex items-center gap-2 mt-1">
-          <Clock className="h-3 w-3" />
-          {!expired && daysNum < 7 && (
+          <Sparkles className="h-3 w-3" />
+          {expired && <span className="text-gray-500 text-xs">Expired</span>}
+          {!expired && daysNum === null && (
+            <span className="text-blue-600 font-medium text-xs">AI generated tests</span>
+          )}
+          {!expired && daysNum !== null && daysNum < 7 && (
             <span className="text-orange-600 font-medium text-xs">
               {daysNum} day{daysNum !== 1 ? "s" : ""} left
             </span>
           )}
-          {!expired && daysNum >= 7 && (
+          {!expired && daysNum !== null && daysNum >= 7 && (
             <span className="text-gray-600 text-xs">{daysNum} days left</span>
           )}
-          {expired && <span className="text-gray-500 text-xs">Expired</span>}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">

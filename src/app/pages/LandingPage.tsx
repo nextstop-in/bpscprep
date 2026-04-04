@@ -89,8 +89,8 @@ export function LandingPage() {
                 Master Your BPSC Exam with Confidence
               </h1>
               <p className="text-xl text-blue-100 mb-8 leading-relaxed">
-                Practice with authentic previous year papers, subject-wise tests, and custom mock exams. 
-                Join thousands of successful candidates in their BPSC preparation journey.
+                Unlock your best score with weekly mock exams, real-scenario question papers, and instant performance insights.
+                Dominate the BPSC stage with data-driven practice and proven strategies.
               </p>
               
               <div className="flex flex-wrap gap-4 mb-10">

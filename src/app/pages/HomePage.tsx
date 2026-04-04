@@ -101,7 +101,7 @@ export function HomePage() {
             Master Your BPSC Exam
           </h2>
           <p className="text-lg text-blue-100 mb-8 max-w-2xl">
-            Practice with 21 weekly mock tests for each subject. All tests have expiry dates to simulate real exam conditions.
+            Supercharge your prep with weekly full-length mocks, subject-focused drills, and timed real-exam practice that builds sharp, exam-ready confidence.
           </p>
 
           {/* Stats */}
@@ -133,16 +133,20 @@ export function HomePage() {
 
       {/* Tests Section with Tabs */}
       <Tabs defaultValue="full-mock" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="full-mock">Full Mock Tests</TabsTrigger>
-          <TabsTrigger value="subject-wise">Subject-wise Tests</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 max-w-md bg-gradient-to-r from-blue-600 to-purple-600 p-[3px] rounded-xl">
+          <TabsTrigger value="full-mock" className="text-white data-[state=active]:bg-white data-[state=active]:text-blue-700">
+            Full Mock Tests
+          </TabsTrigger>
+          <TabsTrigger value="subject-wise" className="text-white data-[state=active]:bg-white data-[state=active]:text-blue-700">
+            Subject-wise Tests
+          </TabsTrigger>
         </TabsList>
 
         {/* Full Mock Tests Tab */}
         <TabsContent value="full-mock" className="space-y-4">
           <div>
             <h3 className="text-2xl font-bold text-gray-900 mb-2">Full Mock Tests</h3>
-            <p className="text-gray-600">21 weekly comprehensive tests covering all subjects</p>
+            <p className="text-gray-600">Weekly comprehensive tests covering all subjects</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -162,12 +166,12 @@ export function HomePage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Subject-wise Mock Tests</h3>
-              <p className="text-gray-600">21 weekly tests for each subject</p>
+              <p className="text-gray-600">Practice with weekly topic drills, time-bound simulations, and curriculum-aligned challenges designed to boost confidence and exam readiness.</p>
             </div>
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-500" />
               <Select value={filterSubject} onValueChange={setFilterSubject}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-48 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 focus-visible:ring-2 focus-visible:ring-blue-400" data-size="default">
                   <SelectValue placeholder="Filter by subject" />
                 </SelectTrigger>
                 <SelectContent>
