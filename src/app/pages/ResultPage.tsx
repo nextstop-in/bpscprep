@@ -1,40 +1,37 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
+import { useQuery } from "../hooks/useApi";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { CheckCircle, XCircle, Home, RotateCcw, TrendingUp, Loader2 } from "lucide-react";
 import { Progress } from "../components/ui/progress";
-import { fetchAttemptResult, AttemptResult } from "../services/testService";
+
+export interface AttemptResult {
+  score: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  testTitle: string;
+  attemptedAnswers: Array<{
+    questionId: number;
+    question: string;
+    attemptedAnswer: string;
+    correctAnswer: string;
+    isCorrect: boolean;
+  }>;
+}
 
 export function ResultPage() {
   const { resultId } = useParams();
   const navigate = useNavigate();
-  const [apiResult, setApiResult] = useState<AttemptResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadResult = async () => {
-      if (!resultId) {
-        setError("No result ID provided");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const apiData = await fetchAttemptResult(resultId);
-        setApiResult(apiData);
-      } catch (error) {
-        console.error("Failed to fetch API result:", error);
-        setError("Failed to load result. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadResult();
-  }, [resultId]);
+  // Fetch attempt result from API using new useQuery pattern
+  const { data: apiResult, loading, error } = useQuery<AttemptResult>(
+    `/attempt/${resultId}`,
+    {},
+    { enabled: !!resultId }
+  );
 
   if (loading) {
     return (
@@ -48,7 +45,7 @@ export function ResultPage() {
   if (error || !apiResult) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">{error || "Result not found"}</p>
+        <p className="text-gray-500">{error?.message || "Result not found"}</p>
         <Button onClick={() => navigate("/")} className="mt-4">
           Go Back Home
         </Button>

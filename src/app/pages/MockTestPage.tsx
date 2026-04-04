@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { useTestDetailsQuery } from "../hooks/useTestsQuery";
+import { useQuery } from "../hooks/useApi";
 import type { Question, MockTest } from "../data/mockData";
-import { submitAttempt } from "../services/testService";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
@@ -13,8 +12,32 @@ import { Clock, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, Loader2 } f
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Skeleton } from "../components/ui/skeleton";
 
+interface ApiTestDetail {
+  id: string;
+  title?: string;
+  subject?: string;
+  duration: number;
+  totalMarks?: number;
+  totalQuestions?: number;
+  questions: Array<{
+    id: string | number;
+    question: string;
+    options: string[];
+    correctAnswer?: number;
+    subject?: string;
+  }>;
+  expiryDate?: string;
+  year?: string;
+  weekId?: string;
+  weekNumber?: number;
+}
+
 export function MockTestPage() {
   const { testId } = useParams();
+  const [searchParams] = useSearchParams();
+  console.log("Sanu URL params - testId:", testId, "weekId:", searchParams.get('weekId'));
+  const weekIdFromUrl = searchParams.get('weekId') || 'unknown';
+  
   const navigate = useNavigate();
   const { user } = useAuth();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -23,10 +46,33 @@ export function MockTestPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string>("");
 
-
-
-  // Fetch test details from API
-  const { data: test, isLoading, error } = useTestDetailsQuery(testId);
+  // Fetch test details directly from API using new useQuery pattern
+  const { data: testDetails, loading: isLoading, error } = useQuery<any | ApiTestDetail>(
+    `/tests/${testId}`,
+    {},
+    { enabled: !!testId }
+  );
+console.log("Sanu Fetched test details:", testDetails);
+  // Transform API response to MockTest format
+  const test = testDetails ? {
+    id: testDetails.testId ,
+    title: testDetails.title || `Test ${testDetails.testId }`,
+    subject: testDetails.subject || "",
+    duration: testDetails.duration,
+    totalMarks: testDetails.totalMarks || testDetails.questions.length,
+    totalQuestions: testDetails.totalQuestions || testDetails.questions.length,
+    questions: testDetails.questions.map((q : any, index:any) => ({
+      id: typeof q.id === 'string' ? q.id : `q${q.id || index + 1}`,
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer ?? 0,
+      subject: q.subject ?? "",
+    })) || [],
+    expiryDate: testDetails.expiryDate || "",
+    year: testDetails.year || new Date().getFullYear().toString(),
+    weekId: weekIdFromUrl ||'unknown',
+    weekNumber: testDetails.weekNumber,
+  } as MockTest : undefined;
 
   // Initialize timer when test data is loaded
   useEffect(() => {
@@ -87,20 +133,27 @@ export function MockTestPage() {
     });
 
     const timeTaken = Math.max(test.duration * 60 - timeRemaining, 0);
-    const weekId = test.weekId || "unknown";
+    // const weekId = test.weekId || "unknown";
     const attemptPayload = {
       userId: user?.id || "user123",
-      testId: test.id,
-      weekId,
+      testId,
+      weekId: weekIdFromUrl,
       answers: payloadAnswers,
       timeTaken,
     };
 
     let submittedToApi = true;
     let attemptId: string | null = null;
+
     try {
-      const response = await submitAttempt(attemptPayload);
-      attemptId = response.attemptId || response.id; // Assuming the response contains attemptId
+      const response = await fetch("https://66e2rvyfvj.execute-api.ap-south-1.amazonaws.com/prod/attempt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(attemptPayload),
+      });
+      if (!response.ok) throw new Error("Submission failed");
+      const responseData = await response.json();
+      attemptId = responseData.attemptId || responseData.id;
       setSubmissionError("");
     } catch (error) {
       submittedToApi = false;
@@ -109,15 +162,15 @@ export function MockTestPage() {
       );
     }
 
-    // Calculate score
+    // Calculate score locally for reference
     let correctAnswers = 0;
-    test.questions.forEach((question) => {
+    test.questions?.forEach((question) => {
       if (answers[question.id] === question.correctAnswer) {
         correctAnswers++;
       }
     });
 
-    const score = (correctAnswers / test.questions.length) * 100;
+    const score = (correctAnswers / (test?.questions?.length || 1)) * 100;
     const resultId = Date.now().toString();
 
     // Save result to localStorage

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { useFullMockTestsQuery, useSubjectWiseTestsQuery, useTestsBySubjectQuery } from "../hooks/useTestsQuery";
+import { useQuery } from "../hooks/useApi";
+import type { MockTest } from "../data/mockData";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { FileText, BookOpen, Filter, Sparkles, Award, AlertCircle } from "lucide-react";
@@ -15,12 +16,45 @@ export function HomePage() {
   const [filterSubject, setFilterSubject] = useState<string>("all");
   const [completedTests, setCompletedTests] = useState<Set<string>>(new Set());
   
-  // Fetch tests using dedicated React Query hooks
-  const { data: fullMockTests = [], isLoading: isFullMockLoading, error: fullMockError } = useFullMockTestsQuery();
-  const { data: subjectWiseTests = [], isLoading: isSubjectWiseLoading, error: subjectWiseError } = useSubjectWiseTestsQuery();
-  const { data: filteredSubjectTests = [], isLoading: isFilteredLoading } = useTestsBySubjectQuery(
-    filterSubject !== "all" ? filterSubject : undefined
-  );
+  // Fetch all tests using new useQuery pattern
+  const { data: allFetchedTests, loading: isTestsLoading, error: testsError } = useQuery< { tests?: MockTest[]; weekId?: string }
+  >("/tests", {}, {
+    retry: 2,
+  });
+console.log("Fetched tests data:", allFetchedTests);
+  const normalizedTests = Array.isArray(allFetchedTests)
+    ? allFetchedTests
+    : Array.isArray(allFetchedTests?.tests)
+      ? allFetchedTests.tests
+        : [];
+
+  const normalizeTestId = (rawId: unknown): string | undefined => {
+    const id = rawId == null ? "" : String(rawId).trim();
+    if (!id || id === "undefined" || id === "null") {
+      return undefined;
+    }
+    return id;
+  };
+
+  const testsWithIds = normalizedTests.map((test, index) => {
+    const fallbackId = `test-${index}-${normalizeTestId(test.subject) ?? normalizeTestId(test.title) ?? "unknown"}`;
+    return {
+      ...test,
+      id:
+        normalizeTestId(test.id) ??
+        normalizeTestId((test as any).testId) ??
+        fallbackId,
+    } as MockTest;
+  });
+
+  // Separate full mock and subject-wise tests
+  const fullMockTests = testsWithIds.filter((t) => t.subject === "ALL");
+  const subjectWiseTests = testsWithIds.filter((t) => t.subject !== "ALL");
+
+  // Filter subject-wise tests by selected subject
+  const filteredSubjectTests = filterSubject !== "all"
+    ? subjectWiseTests.filter((t) => t.subject === filterSubject)
+    : subjectWiseTests;
 
   useEffect(() => {
     // Load completed tests from localStorage
@@ -28,16 +62,23 @@ export function HomePage() {
     const testIds = new Set(results.map((result: any) => result.testId));
     setCompletedTests(testIds as any);
   }, []);
-
+console.log("completed tests IDs from localStorage:", completedTests);
   // Get unique subjects from subject-wise tests
   const uniqueSubjects = Array.from(new Set(subjectWiseTests.map((test) => test.subject)));
   const subjects = ["all", ...uniqueSubjects];
 
-  // Determine which filtered tests to show
-  const displayedSubjectTests = filterSubject === "all" ? subjectWiseTests : filteredSubjectTests;
+  const handleStartTest = (testId: string | undefined) => {
+    if (!testId || testId.toString().trim() === "" || testId === "undefined" || testId === "null") {
+      console.warn("Invalid testId passed to handleStartTest, navigation skipped.", testId);
+      return;
+    }
 
-  const handleStartTest = (testId: string) => {
-    navigate(`/dashboard/mock-test/${testId}`);
+    // Find the test to get its weekId
+    const test = allTests.find(t => t.id === testId);
+    // const weekId = test?.weekId || "unknown";
+    const {weekId=''}=allFetchedTests||{};
+    console.log("Starting test with ID:", testId, "weekId:", weekId);
+    navigate(`/dashboard/mock-test/${testId}?weekId=${weekId}`);
   };
 
   // Calculate stats from all available tests
@@ -46,8 +87,8 @@ export function HomePage() {
   const totalQuestions = allTests.reduce((acc, test) => acc + test.totalQuestions, 0);
 
   // Check if any errors occurred
-  const hasError = fullMockError || subjectWiseError;
-  const isLoading = isFullMockLoading || isSubjectWiseLoading;
+  const hasError = testsError;
+  const isLoading = isTestsLoading;
 
   return (
     <div className="space-y-8">
@@ -58,7 +99,7 @@ export function HomePage() {
           <div>
             <h3 className="font-semibold text-red-900">Failed to load tests</h3>
             <p className="text-red-700 text-sm mt-1">
-              {fullMockError?.message || subjectWiseError?.message || "An error occurred"}
+              {testsError?.message || "An error occurred"}
             </p>
             <Button
               size="sm"
@@ -186,7 +227,7 @@ export function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayedSubjectTests.map((test) => (
+            {filteredSubjectTests.map((test) => (
               <SubjectWiseTestsCard
                 key={test.id}
                 test={test}
@@ -196,7 +237,7 @@ export function HomePage() {
             ))}
           </div>
 
-          {displayedSubjectTests.length === 0 && (
+          {filteredSubjectTests.length === 0 && (
             <div className="text-center py-12 bg-gray-50 rounded-lg">
               <p className="text-gray-500">No tests found for the selected subject.</p>
             </div>
