@@ -27,8 +27,8 @@ export function SubjectWiseTestsCard({ test, isCompleted, onStartTest }: Subject
       }`}
     >
       <CardHeader>
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+          <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="bg-blue-100 text-blue-700">
               {test.subject}
             </Badge>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { useQuery } from "../hooks/useApi";
@@ -8,7 +8,7 @@ import { Button } from "../components/ui/button";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Label } from "../components/ui/label";
 import { Progress } from "../components/ui/progress";
-import { Clock, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Clock, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, BookOpen, FileText, ClipboardList } from "lucide-react";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Skeleton } from "../components/ui/skeleton";
 
@@ -32,19 +32,35 @@ interface ApiTestDetail {
   weekNumber?: number;
 }
 
+interface SubmissionResult {
+  score: number;
+  correctAnswers: number;
+  wrongAnswers: number;
+  unanswered: number;
+  totalQuestions: number;
+  attemptId: string | null;
+  submittedToApi: boolean;
+  testId: string;
+  testTitle: string;
+  answers: Record<string, string>;
+  timeTaken: number;
+  date: string;
+}
+
 export function MockTestPage() {
   const { testId } = useParams();
   const [searchParams] = useSearchParams();
-  console.log("Sanu URL params - testId:", testId, "weekId:", searchParams.get('weekId'));
-  const weekIdFromUrl = searchParams.get('weekId') || 'unknown';
-  
+  const weekIdFromUrl = searchParams.get('weekId') || undefined;
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: number }>({});
-  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const timerRef = useRef<number | null>(null);
   const [submissionError, setSubmissionError] = useState<string>("");
+  const [result, setResult] = useState<SubmissionResult | null>(null);
 
   // Fetch test details directly from API using new useQuery pattern
   const { data: testDetails, loading: isLoading, error } = useQuery<any | ApiTestDetail>(
@@ -52,17 +68,17 @@ export function MockTestPage() {
     {},
     { enabled: !!testId }
   );
-console.log("Sanu Fetched test details:", testDetails);
+
   // Transform API response to MockTest format
   const test = testDetails ? {
-    id: testDetails.testId ,
-    title: testDetails.title || `Test ${testDetails.testId }`,
+    id: testDetails.testId,
+    title: testDetails.title || `Test ${testDetails.testId}`,
     subject: testDetails.subject || "",
     duration: testDetails.duration,
     totalMarks: testDetails.totalMarks || testDetails.questions.length,
     totalQuestions: testDetails.totalQuestions || testDetails.questions.length,
-    questions: testDetails.questions.map((q : any, index:any) => ({
-      id: typeof q.id === 'string' ? q.id : `q${q.id || index + 1}`,
+    questions: testDetails.questions.map((q: any, index: any) => ({
+      id: typeof q.id === "string" ? q.id : `q${q.id || index + 1}`,
       question: q.question,
       options: q.options,
       correctAnswer: q.correctAnswer ?? 0,
@@ -70,33 +86,42 @@ console.log("Sanu Fetched test details:", testDetails);
     })) || [],
     expiryDate: testDetails.expiryDate || "",
     year: testDetails.year || new Date().getFullYear().toString(),
-    weekId: weekIdFromUrl ||'unknown',
+    weekId: weekIdFromUrl || testDetails.weekId || "unknown",
     weekNumber: testDetails.weekNumber,
   } as MockTest : undefined;
 
   // Initialize timer when test data is loaded
   useEffect(() => {
-    if (test) {
-      setTimeRemaining(test.duration * 60); // Convert minutes to seconds
-    }
-  }, [test]);
+    if (!test || isLoading || result) return;
 
-  // Timer effect
-  useEffect(() => {
-    if (timeRemaining > 0 && test) {
-      const timer = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            handleSubmitTest();
-            return 0;
+    if (timeRemaining === null) {
+      setTimeRemaining(test.duration * 60);
+      return;
+    }
+
+    if (timerRef.current) return;
+
+    timerRef.current = window.setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          if (timerRef.current) {
+            window.clearInterval(timerRef.current);
+            timerRef.current = null;
           }
-          return prev - 1;
-        });
-      }, 1000);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-      return () => clearInterval(timer);
-    }
-  }, [timeRemaining, test]);
+    return () => {
+      if (timerRef.current) {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [test?.id, test?.duration, isLoading, result, timeRemaining]);
 
   const handleAnswerSelect = (questionId: string, answerIndex: number) => {
     setAnswers((prev) => ({
@@ -132,12 +157,12 @@ console.log("Sanu Fetched test details:", testDetails);
       }
     });
 
-    const timeTaken = Math.max(test.duration * 60 - timeRemaining, 0);
-    // const weekId = test.weekId || "unknown";
+    const timeTaken = Math.max(test.duration * 60 - (timeRemaining ?? 0), 0);
+    const weekId = weekIdFromUrl || test.weekId || "unknown";
     const attemptPayload = {
       userId: user?.id || "user123",
-      testId,
-      weekId: weekIdFromUrl,
+      testId: test.id,
+      weekId,
       answers: payloadAnswers,
       timeTaken,
     };
@@ -170,44 +195,91 @@ console.log("Sanu Fetched test details:", testDetails);
       }
     });
 
+    const answeredCount = Object.keys(answers).length;
+    const wrongAnswers = Math.max(0, answeredCount - correctAnswers);
+    const unanswered = Math.max(0, test.questions.length - answeredCount);
     const score = (correctAnswers / (test?.questions?.length || 1)) * 100;
-    const resultId = Date.now().toString();
 
-    // Save result to localStorage
-    const result = {
-      id: resultId,
-      testId: test.id,
-      testTitle: test.title,
+    const submissionResult = {
       score,
       correctAnswers,
+      wrongAnswers,
+      unanswered,
       totalQuestions: test.questions.length,
-      answers,
-      date: new Date().toISOString(),
-      timeTaken,
-      submittedToApi,
       attemptId,
+      submittedToApi,
+      testId: test.id,
+      testTitle: test.title,
+      answers: payloadAnswers,
+      timeTaken,
+      date: new Date().toISOString(),
     };
 
     const existingResults = JSON.parse(localStorage.getItem("bpsc_results") || "[]");
-    localStorage.setItem("bpsc_results", JSON.stringify([...existingResults, result]));
+    localStorage.setItem("bpsc_results", JSON.stringify([...existingResults, submissionResult]));
 
+    setResult(submissionResult);
     setIsSubmitting(false);
-    navigate(`/dashboard/result/${resultId}`);
   };
 
-  const formatTime = (seconds: number) => {
+  const formatTime = (seconds: number | null) => {
+    if (seconds === null) return "--:--";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const getPerformanceMessage = (score: number) => {
+    if (score >= 90) return { message: "Outstanding!", color: "text-green-600" };
+    if (score >= 75) return { message: "Excellent Work!", color: "text-blue-600" };
+    if (score >= 60) return { message: "Good Job!", color: "text-yellow-600" };
+    if (score >= 40) return { message: "Keep Practicing!", color: "text-orange-600" };
+    return { message: "Needs More Practice", color: "text-red-600" };
+  };
+
   // Loading state
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-32 w-full rounded-lg" />
-        <Skeleton className="h-4 w-full rounded-lg" />
-        <Skeleton className="h-96 w-full rounded-lg" />
+      <div className="space-y-8 py-16 px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <div className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-blue-200 shadow-sm">
+            <BookOpen className="h-14 w-14 text-blue-700" />
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900">Preparing your exam</h2>
+          <p className="text-slate-600 mt-2 max-w-xl mx-auto">
+            We’re loading the test paper, questions and answer sheet. Hold tight while we get everything ready.
+          </p>
+        </div>
+
+        <div className="mx-auto flex max-w-xs items-end justify-center gap-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <span
+              key={index}
+              style={{ animationDelay: `${index * 140}ms` }}
+              className="block h-10 w-3 rounded-full bg-blue-600/90 animate-bounce"
+            />
+          ))}
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <FileText className="h-5 w-5 text-slate-500" />
+              <span className="font-semibold text-slate-700">Exam blueprint</span>
+            </div>
+            <div className="h-3 w-full rounded-full bg-slate-200" />
+            <div className="flex items-center gap-3">
+              <ClipboardList className="h-5 w-5 text-slate-500" />
+              <span className="font-semibold text-slate-700">Question set</span>
+            </div>
+            <div className="h-3 w-5/6 rounded-full bg-slate-200" />
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-slate-500" />
+              <span className="font-semibold text-slate-700">Timer setup</span>
+            </div>
+            <div className="h-3 w-1/2 rounded-full bg-slate-200" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -237,6 +309,79 @@ console.log("Sanu Fetched test details:", testDetails);
         <Button onClick={() => navigate("/dashboard")} className="mt-4">
           Go Back Home
         </Button>
+      </div>
+    );
+  }
+
+  if (result) {
+    const performance = getPerformanceMessage(result.score);
+
+    return (
+      <div className="space-y-6">
+        <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+          <CardContent className="p-8 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 mb-4">
+              <BookOpen className="h-10 w-10 text-white" />
+            </div>
+            <h2 className="text-3xl font-bold mb-2">Test Completed!</h2>
+            <p className="text-blue-100">{result.testTitle}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-8">
+            <div className="text-center mb-6">
+              <div className={`text-6xl font-bold mb-2 ${performance.color}`}>
+                {result.score.toFixed(1)}%
+              </div>
+              <p className={`text-xl font-medium ${performance.color}`}>{performance.message}</p>
+            </div>
+
+            <Progress value={result.score} className="h-3 mb-6" />
+
+            <div className="grid grid-cols-4 gap-4 text-center">
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="font-bold text-green-700 text-2xl">{result.correctAnswers}</div>
+                <p className="text-sm text-gray-600">Correct</p>
+              </div>
+              <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                <div className="font-bold text-red-700 text-2xl">{result.wrongAnswers}</div>
+                <p className="text-sm text-gray-600">Wrong</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="font-bold text-slate-700 text-2xl">{result.unanswered}</div>
+                <p className="text-sm text-gray-600">Unanswered</p>
+              </div>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="font-bold text-blue-700 text-2xl">{result.totalQuestions}</div>
+                <p className="text-sm text-gray-600">Total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Time Taken</p>
+                <p className="mt-2 text-lg font-semibold">{formatTime(result.timeTaken)}</p>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Week ID</p>
+                <p className="mt-2 text-lg font-semibold">{weekIdFromUrl || test.weekId || "unknown"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>Back to Dashboard</Button>
+          <Button onClick={() => window.location.reload()}>Retake Test</Button>
+        </div>
       </div>
     );
   }

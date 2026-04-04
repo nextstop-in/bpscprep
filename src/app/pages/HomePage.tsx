@@ -21,7 +21,7 @@ export function HomePage() {
   >("/tests", {}, {
     retry: 2,
   });
-console.log("Fetched tests data:", allFetchedTests);
+
   const normalizedTests = Array.isArray(allFetchedTests)
     ? allFetchedTests
     : Array.isArray(allFetchedTests?.tests)
@@ -62,7 +62,7 @@ console.log("Fetched tests data:", allFetchedTests);
     const testIds = new Set(results.map((result: any) => result.testId));
     setCompletedTests(testIds as any);
   }, []);
-console.log("completed tests IDs from localStorage:", completedTests);
+
   // Get unique subjects from subject-wise tests
   const uniqueSubjects = Array.from(new Set(subjectWiseTests.map((test) => test.subject)));
   const subjects = ["all", ...uniqueSubjects];
@@ -73,12 +73,9 @@ console.log("completed tests IDs from localStorage:", completedTests);
       return;
     }
 
-    // Find the test to get its weekId
-    const test = allTests.find(t => t.id === testId);
-    // const weekId = test?.weekId || "unknown";
-    const {weekId=''}=allFetchedTests||{};
-    console.log("Starting test with ID:", testId, "weekId:", weekId);
-    navigate(`/dashboard/mock-test/${testId}?weekId=${weekId}`);
+    const test = allTests.find((t) => t.id === testId);
+    const {weekId=''} = allFetchedTests||{};
+    navigate(`/dashboard/mock-test/${testId}?weekId=${encodeURIComponent(weekId)}`);
   };
 
   // Calculate stats from all available tests
