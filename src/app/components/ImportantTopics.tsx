@@ -34,7 +34,7 @@ export function ImportantTopics() {
             >
               <div className="flex justify-between items-start gap-2">
                 <div className="flex-1">
-                  <p className="font-medium text-sm text-gray-900">{topic.title}</p>
+                  <p className="font-medium text-sm text-foreground">{topic.title}</p>
                   <p className="text-xs text-gray-500 mt-1">{topic.subject}</p>
                 </div>
                 <Badge className={`text-xs ${getImportanceColor(topic.importance)}`}>

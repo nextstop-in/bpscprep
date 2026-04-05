@@ -19,7 +19,7 @@ export function SubjectWiseTestsCard({ test, isCompleted, onStartTest }: Subject
           (1000 * 60 * 60 * 24)
       )
     : null;
-
+console.log("Test sw:", test);
   return (
     <Card
       className={`hover:shadow-lg transition-all border flex flex-col ${
@@ -68,15 +68,15 @@ export function SubjectWiseTestsCard({ test, isCompleted, onStartTest }: Subject
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="text-center">
               <p className="text-gray-600">Duration</p>
-              <p className="font-semibold">{test.duration}m</p>
+              <p className="font-semibold text-foreground">{test.duration} min</p>
             </div>
             <div className="text-center">
               <p className="text-gray-600">Questions</p>
-              <p className="font-semibold">{test.totalQuestions}</p>
+              <p className="font-semibold text-foreground">{test.totalQuestions}</p>
             </div>
             <div className="text-center">
               <p className="text-gray-600">Marks</p>
-              <p className="font-semibold">{test.totalMarks}</p>
+              <p className="font-semibold text-foreground">{test.totalQuestions}</p>
             </div>
           </div>
         </div>

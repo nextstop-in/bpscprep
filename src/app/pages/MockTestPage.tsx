@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { useQuery } from "../hooks/useApi";
@@ -8,7 +8,7 @@ import { Button } from "../components/ui/button";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Label } from "../components/ui/label";
 import { Progress } from "../components/ui/progress";
-import { Clock, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, BookOpen, FileText, ClipboardList } from "lucide-react";
+import { Clock, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, BookOpen, FileText, ClipboardList, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Skeleton } from "../components/ui/skeleton";
 
@@ -43,13 +43,21 @@ interface SubmissionResult {
   testId: string;
   testTitle: string;
   answers: Record<string, string>;
+  attemptedAnswers: Array<{
+    questionId: number;
+    question: string;
+    attemptedAnswer: string;
+    correctAnswer: string;
+    isCorrect: boolean;
+  }>;
   timeTaken: number;
   date: string;
 }
 
 export function MockTestPage() {
-  const { testId } = useParams();
+  const { testId, reviewResultId } = useParams();
   const [searchParams] = useSearchParams();
+  const isReviewMode = Boolean(reviewResultId);
   const weekIdFromUrl = searchParams.get('weekId') || undefined;
 
   const navigate = useNavigate();
@@ -63,7 +71,7 @@ export function MockTestPage() {
   const [result, setResult] = useState<SubmissionResult | null>(null);
 
   useEffect(() => {
-    if (result) return;
+    if (result || isReviewMode) return;
 
     const warningMessage = "You have an unfinished test. Leaving now will discard your progress.";
 
@@ -86,6 +94,23 @@ export function MockTestPage() {
     {},
     { enabled: !!testId }
   );
+
+  const { data: reviewResult, loading: isReviewLoading, error: reviewError } = useQuery<any>(
+    `/attempt/${reviewResultId}`,
+    {},
+    { enabled: isReviewMode }
+  );
+
+  const reviewAnswerMap = useMemo(() => {
+    const map = new Map<string, any>();
+    if (!reviewResult?.attemptedAnswers) return map;
+    reviewResult.attemptedAnswers.forEach((answer: any) => {
+      map.set(String(answer.questionId), answer);
+      map.set(String(answer.questionId).replace(/^q/, ""), answer);
+      map.set(String(answer.question).trim(), answer);
+    });
+    return map;
+  }, [reviewResult]);
 
   // Transform API response to MockTest format
   const test = testDetails ? {
@@ -205,18 +230,40 @@ export function MockTestPage() {
       );
     }
 
+    if (!attemptId) {
+      attemptId = `local-${Date.now()}`;
+      submittedToApi = false;
+    }
+
     // Calculate score locally for reference
     let correctAnswers = 0;
-    test.questions?.forEach((question) => {
-      if (answers[question.id] === question.correctAnswer) {
+    const attemptedAnswers = test.questions.map((question, index) => {
+      const selectedIndex = answers[question.id];
+      const attemptedAnswer =
+        selectedIndex !== undefined && selectedIndex !== null
+          ? question.options[selectedIndex]
+          : "";
+      const correctAnswer = question.options[question.correctAnswer] || "";
+      const isCorrect = selectedIndex === question.correctAnswer;
+
+      if (isCorrect) {
         correctAnswers++;
       }
+
+      return {
+        questionId: index + 1,
+        question: question.question,
+        attemptedAnswer,
+        correctAnswer,
+        isCorrect,
+      };
     });
 
-    const answeredCount = Object.keys(answers).length;
-    const wrongAnswers = Math.max(0, answeredCount - correctAnswers);
-    const unanswered = Math.max(0, test.questions.length - answeredCount);
-    const score = (correctAnswers / (test?.questions?.length || 1)) * 100;
+    const unanswered = test.questions.filter(
+      (question) => answers[question.id] === undefined || answers[question.id] === null
+    ).length;
+    const wrongAnswers = Math.max(0, test.questions.length - correctAnswers - unanswered);
+    const score = (correctAnswers / (test.questions.length || 1)) * 100;
 
     const submissionResult = {
       score,
@@ -229,6 +276,7 @@ export function MockTestPage() {
       testId: test.id,
       testTitle: test.title,
       answers: payloadAnswers,
+      attemptedAnswers,
       timeTaken,
       date: new Date().toISOString(),
     };
@@ -236,8 +284,8 @@ export function MockTestPage() {
     const existingResults = JSON.parse(localStorage.getItem("bpsc_results") || "[]");
     localStorage.setItem("bpsc_results", JSON.stringify([...existingResults, submissionResult]));
 
-    setResult(submissionResult);
     setIsSubmitting(false);
+    navigate(`/home/result/${attemptId}`);
   };
 
   const formatTime = (seconds: number | null) => {
@@ -263,7 +311,7 @@ export function MockTestPage() {
           <div className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-blue-200 shadow-sm">
             <BookOpen className="h-14 w-14 text-blue-700" />
           </div>
-          <h2 className="text-3xl font-bold text-slate-900">Preparing your exam</h2>
+          <h2 className="text-3xl font-bold text-foreground">Preparing your exam</h2>
           <p className="text-slate-600 mt-2 max-w-xl mx-auto">
             We’re loading the test paper, questions and answer sheet. Hold tight while we get everything ready.
           </p>
@@ -308,11 +356,31 @@ export function MockTestPage() {
       <div className="text-center py-12">
         <div className="mb-4">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Failed to Load Test</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Failed to Load Test</h2>
           <p className="text-gray-600">
             {error?.message || "Test not found. Please try again."}
           </p>
         </div>
+        <Button onClick={() => navigate("/home")} className="mt-4">
+          Go Back Home
+        </Button>
+      </div>
+    );
+  }
+
+  if (isReviewMode && isReviewLoading) {
+    return (
+      <div className="text-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+        <p className="text-gray-600">Loading review details...</p>
+      </div>
+    );
+  }
+
+  if (isReviewMode && reviewError) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">{reviewError?.message || "Unable to load review details."}</p>
         <Button onClick={() => navigate("/home")} className="mt-4">
           Go Back Home
         </Button>
@@ -408,6 +476,22 @@ export function MockTestPage() {
   const progress = ((currentQuestionIndex + 1) / test.questions.length) * 100;
   const answeredCount = Object.keys(answers).length;
 
+  const currentReviewAttempt = reviewResult && currentQuestion
+    ? reviewAnswerMap.get(String(currentQuestion.id))
+        || reviewAnswerMap.get(String(currentQuestion.id).replace(/^q/, ""))
+        || reviewAnswerMap.get(currentQuestion.question.trim())
+    : undefined;
+
+  const selectedReviewIndex = currentReviewAttempt
+    ? currentQuestion.options.findIndex((option) => option === currentReviewAttempt.attemptedAnswer)
+    : -1;
+
+  const selectedValue = isReviewMode
+    ? selectedReviewIndex >= 0
+      ? selectedReviewIndex.toString()
+      : undefined
+    : answers[currentQuestion.id]?.toString();
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -455,26 +539,50 @@ export function MockTestPage() {
             </CardHeader>
             <CardContent>
               <RadioGroup
-                value={answers[currentQuestion.id]?.toString()}
-                onValueChange={(value) => handleAnswerSelect(currentQuestion.id, parseInt(value))}
+                value={selectedValue}
+                onValueChange={(value) => {
+                  if (!isReviewMode) {
+                    handleAnswerSelect(currentQuestion.id, parseInt(value));
+                  }
+                }}
               >
                 <div className="space-y-3">
-                  {currentQuestion.options.map((option, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer transition-colors ${
-                        answers[currentQuestion.id] === index
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-200 hover:border-blue-300"
-                      }`}
-                      onClick={() => handleAnswerSelect(currentQuestion.id, index)}
-                    >
-                      <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                      <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
-                        {option}
-                      </Label>
-                    </div>
-                  ))}
+                  {currentQuestion.options.map((option, index) => {
+                    const isCorrectOption = isReviewMode && index === currentQuestion.correctAnswer;
+                    const isSelectedOption = isReviewMode && selectedReviewIndex === index;
+                    const isWrongSelected = isReviewMode && isSelectedOption && index !== currentQuestion.correctAnswer;
+
+                    return (
+                      <div
+                        key={index}
+                        className={`flex items-center space-x-3 p-4 border rounded-lg transition-colors ${
+                          isReviewMode
+                            ? isCorrectOption
+                              ? "border-green-400 bg-green-50"
+                              : isWrongSelected
+                                ? "border-red-400 bg-red-50"
+                                : "border-gray-200 bg-white"
+                            : answers[currentQuestion.id] === index
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:border-blue-300"
+                        } ${isReviewMode ? "cursor-default" : "cursor-pointer"}`}
+                        onClick={() => {
+                          if (!isReviewMode) handleAnswerSelect(currentQuestion.id, index);
+                        }}
+                      >
+                        <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                        <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
+                          {option}
+                        </Label>
+                        {isReviewMode && isCorrectOption && (
+                          <span className="text-green-700 text-xs font-semibold">Correct Answer</span>
+                        )}
+                        {isReviewMode && isWrongSelected && (
+                          <span className="text-red-700 text-xs font-semibold">Your Answer</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </RadioGroup>
             </CardContent>
@@ -500,14 +608,16 @@ export function MockTestPage() {
                 </Button>
               ) : null}
 
-              <Button
-                onClick={handleSubmitTest}
-                disabled={isSubmitting}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle className="h-4 w-4" />
-                Submit Test
-              </Button>
+              {!isReviewMode && (
+                <Button
+                  onClick={handleSubmitTest}
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Submit Test
+                </Button>
+              )}
             </div>
           </div>
 
@@ -524,6 +634,17 @@ export function MockTestPage() {
             <Alert variant="destructive">
               <AlertDescription>{submissionError}</AlertDescription>
             </Alert>
+          )}
+
+          {isReviewMode && reviewResult && (
+            <div className="flex flex-col gap-3 mt-4 sm:flex-row sm:justify-between">
+              <Button variant="outline" onClick={() => navigate("/home")}>
+                Back to Home
+              </Button>
+              <Button onClick={() => navigate(`/home/test/${test.id}`)}>
+                Retake Test
+              </Button>
+            </div>
           )}
         </div>
 

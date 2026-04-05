@@ -27,7 +27,7 @@ export function SignupPage() {
     async ({ email, code }: { email: string; code: string }) =>
       authService.confirmOTP(email, code),
     {
-      onSuccess: (data, variables) => {
+      onSuccess: (data: any, variables: {email: string, code: string}) => {
         // Create user object after successful OTP confirmation
         const userData = {
           id: variables.email,

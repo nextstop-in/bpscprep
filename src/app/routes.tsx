@@ -29,6 +29,7 @@ export const router = createBrowserRouter([
     Component: Layout,
     children: [
       { index: true, Component: HomePage },
+      { path: "test/:testId/review/:reviewResultId", Component: MockTestPage },
       { path: "test/:testId", Component: MockTestPage },
       { path: "result/:resultId", Component: ResultPage },
     ],

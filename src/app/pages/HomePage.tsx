@@ -183,7 +183,7 @@ export function HomePage() {
         {/* Full Tests Tab */}
         <TabsContent value="full-mock" className="space-y-4">
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Full Tests</h3>
+            <h3 className="text-2xl font-bold text-foreground mb-2">Full Tests</h3>
             <p className="text-gray-600">Weekly comprehensive tests covering all subjects</p>
           </div>
 
@@ -203,19 +203,21 @@ export function HomePage() {
         <TabsContent value="subject-wise" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Subject-wise Tests</h3>
+              <h3 className="text-2xl font-bold text-foreground mb-2">Subject-wise Tests</h3>
               <p className="text-gray-600">Practice with weekly topic drills, time-bound simulations, and curriculum-aligned challenges designed to boost confidence and exam readiness.</p>
             </div>
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
               <Select value={filterSubject} onValueChange={setFilterSubject}>
-                <SelectTrigger className="w-48 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 focus-visible:ring-2 focus-visible:ring-blue-400" data-size="default">
-                  <SelectValue placeholder="Filter by subject" />
+                <SelectTrigger className="w-56 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 focus-visible:ring-2 focus-visible:ring-blue-400 pr-2" data-size="default">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-white" />
+                    <SelectValue placeholder="Filter by subject" />
+                  </div>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="w-56">
                   {subjects.map((subject) => (
-                    <SelectItem key={subject} value={subject}>
-                      {subject === "all" ? "All Subjects" : subject}
+                    <SelectItem key={subject} value={subject} className="font-semibold cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50">
+                      <span className="font-medium">{subject === "all" ? "All Subjects" : subject}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>

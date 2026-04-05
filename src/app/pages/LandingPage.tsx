@@ -85,7 +85,7 @@ export function LandingPage() {
                   India's Trusted BPSC Preparation Platform
                 </span>
               </div>
-              <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+              <h1 className="text-5xl md:text-6xl text-white font-bold mb-6 leading-tight" style={{color: 'white', WebkitTextFillColor: 'white'}}>
                 Master Your BPSC Exam with Confidence
               </h1>
               <p className="text-xl text-blue-100 mb-8 leading-relaxed">

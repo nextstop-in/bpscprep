@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useNavigate } from "react-router";
 import { useMutation } from "../hooks/useApi";
 import * as authService from "../lib/authService";
+import type { SignupResponse } from "../lib/authService";
 
 interface User {
   id: string;
@@ -12,7 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string) => Promise<{ message: string; user: string }>;
+  signup: (email: string, password: string) => Promise<SignupResponse>;
   confirmSignup: (email: string, code: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => void;
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async ({ email, password }: { email: string; password: string }) =>
       authService.login(email, password),
     {
-      onSuccess: (data) => {
+      onSuccess: (data, variables) => {
         // Store tokens in sessionStorage
         sessionStorage.setItem("accessToken", data.data.accessToken);
         sessionStorage.setItem("idToken", data.data.idToken);
@@ -53,9 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Create user object
         const userData = {
-          id: email,
-          name: email.split("@")[0],
-          email,
+          id: variables.email,
+          name: variables.email.split("@")[0],
+          email: variables.email,
         };
 
         setUser(userData);
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async ({ email, code }: { email: string; code: string }) =>
       authService.confirmOTP(email, code),
     {
-      onSuccess: (data, variables) => {
+      onSuccess: (data: any, variables: {email: string, code: string}) => {
         // Create user object after successful OTP confirmation
         const userData = {
           id: variables.email,

@@ -19,7 +19,7 @@ export function FullMockTestsCard({ test, isCompleted, onStartTest }: FullMockTe
           (1000 * 60 * 60 * 24)
       )
     : null;
-
+console.log("Test fm:", test);
   return (
     <Card
       className={`hover:shadow-lg transition-all border flex flex-col ${
@@ -43,37 +43,37 @@ export function FullMockTestsCard({ test, isCompleted, onStartTest }: FullMockTe
             </Badge>
           )}
         </div>
-        <CardTitle className="text-lg">{test.title}</CardTitle>
+        <CardTitle className="text-base">{test.title}</CardTitle>
         <CardDescription className="flex items-center gap-2 mt-2">
-          <Sparkles className="h-4 w-4" />
-          {expired && <span className="text-gray-500">Expired</span>}
+          <Sparkles className="h-3 w-3" />
+          {expired && <span className="text-gray-500 text-xs">Expired</span>}
           {!expired && daysNum === null && (
-            <span className="text-blue-600 font-medium">AI generated tests</span>
+            <span className="text-blue-600 font-medium text-xs">AI generated tests</span>
           )}
           {!expired && daysNum !== null && daysNum < 7 && (
-            <span className="text-orange-600 font-medium">
+            <span className="text-orange-600 font-medium text-xs">
               {daysNum} day{daysNum !== 1 ? "s" : ""} remaining
             </span>
           )}
           {!expired && daysNum !== null && daysNum >= 7 && (
-            <span className="text-gray-600">Expires in {daysNum} days</span>
+            <span className="text-gray-600 text-xs">Expires in {daysNum} days</span>
           )}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
         <div className="flex-1">
-          <div className="grid grid-cols-3 gap-2 text-sm">
+          <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="text-center">
               <p className="text-gray-600">Duration</p>
-              <p className="font-semibold">{test.duration}m</p>
+              <p className="font-semibold text-foreground">{test.duration} min</p>
             </div>
             <div className="text-center">
               <p className="text-gray-600">Questions</p>
-              <p className="font-semibold">{test.totalQuestions}</p>
+              <p className="font-semibold text-foreground">{test.totalQuestions}</p>
             </div>
             <div className="text-center">
               <p className="text-gray-600">Marks</p>
-              <p className="font-semibold">{test.totalMarks}</p>
+              <p className="font-semibold text-foreground">{test.totalQuestions}</p>
             </div>
           </div>
         </div>

@@ -14,7 +14,7 @@ export function Layout() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate("/login");
+      navigate("/");
     }
   }, [user, isLoading, navigate]);
 
@@ -49,7 +49,7 @@ export function Layout() {
             >
               <Logo className="h-10 w-10" />
               <div>
-                <h1 className="text-xl font-bold text-slate-900">bpscprep.in</h1>
+                <h1 className="text-xl font-bold text-foreground">bpscprep.in</h1>
                 <p className="text-xs text-slate-500">Your BPSC Success Partner</p>
               </div>
             </div>
@@ -58,7 +58,7 @@ export function Layout() {
               <div className="flex items-center gap-4 ml-4 pl-4 border-l border-gray-200">
                 <div className="text-right">
                   <p className="text-xs uppercase tracking-wider text-slate-500">Logged in as</p>
-                  <p className="text-sm font-semibold text-slate-900">{user.name}</p>
+                  <p className="text-sm font-semibold text-foreground">{user.name}</p>
                   <p className="text-xs text-slate-500">{user.email}</p>
                 </div>
                 <Button

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useQuery } from "../hooks/useApi";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -13,6 +13,7 @@ export interface AttemptResult {
   wrong: number;
   unanswered: number;
   testTitle: string;
+  testId?: string;
   attemptedAnswers: Array<{
     questionId: number;
     question: string;
@@ -33,7 +34,17 @@ export function ResultPage() {
     { enabled: !!resultId }
   );
 
-  if (loading) {
+  const fallbackResult = useMemo(() => {
+    if (!resultId) return null;
+    const stored = JSON.parse(localStorage.getItem("bpsc_results") || "[]");
+    return stored.find((item: any) => item.attemptId === resultId) || null;
+  }, [resultId]);
+
+  const resultData = apiResult || fallbackResult;
+  const resultError = error && !fallbackResult ? error : undefined;
+  const isLoadingResult = loading && !fallbackResult;
+
+  if (isLoadingResult) {
     return (
       <div className="text-center py-12">
         <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -42,10 +53,10 @@ export function ResultPage() {
     );
   }
 
-  if (error || !apiResult) {
+  if (resultError || !resultData) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">{error?.message || "Result not found"}</p>
+        <p className="text-gray-500">{resultError?.message || "Result not found"}</p>
         <Button onClick={() => navigate("/")} className="mt-4">
           Go Back Home
         </Button>
@@ -53,19 +64,18 @@ export function ResultPage() {
     );
   }
 
-  const { score, correct, wrong, unanswered, attemptedAnswers, testTitle } = apiResult;
+  const { score, correct, wrong, unanswered, testTitle, testId, attemptedAnswers: rawAttemptedAnswers } = resultData as AttemptResult & { attemptedAnswers?: any };
+  const attemptedAnswers = rawAttemptedAnswers ?? [];
   const totalQuestions = correct + wrong + unanswered;
-  const percentage = score;
 
   const getPerformanceMessage = (score: number) => {
     if (score >= 90) return { message: "Outstanding!", color: "text-green-600" };
     if (score >= 75) return { message: "Excellent Work!", color: "text-blue-600" };
     if (score >= 60) return { message: "Good Job!", color: "text-yellow-600" };
-    if (score >= 40) return { message: "Keep Practicing!", color: "text-orange-600" };
-    return { message: "Need More Practice", color: "text-red-600" };
+    return { message: "Review Your Answers", color: "text-red-600" };
   };
 
-  const performance = getPerformanceMessage(percentage);
+  const performance = getPerformanceMessage(score);
 
   return (
     <div className="space-y-6">
@@ -87,12 +97,11 @@ export function ResultPage() {
         <CardContent className="p-8">
           <div className="text-center mb-6">
             <div className={`text-6xl font-bold mb-2 ${performance.color}`}>
-              {percentage.toFixed(1)}%
+              {score.toFixed(2)}
             </div>
+            <p className="text-sm text-gray-500 mb-2">Raw Score</p>
             <p className={`text-xl font-medium ${performance.color}`}>{performance.message}</p>
           </div>
-
-          <Progress value={percentage} className="h-3 mb-6" />
 
           <div className="grid grid-cols-4 gap-4 text-center">
             <div className="p-4 bg-green-50 rounded-lg border border-green-200">
@@ -140,16 +149,21 @@ export function ResultPage() {
           <CardTitle>Detailed Results</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {attemptedAnswers.map((answer) => (
-              <div
-                key={answer.questionId}
-                className={`p-4 rounded-lg border ${
-                  answer.isCorrect
-                    ? "border-green-200 bg-green-50"
-                    : "border-red-200 bg-red-50"
-                }`}
-              >
+          {attemptedAnswers.length === 0 ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+              Detailed answer review is not available for this result.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {attemptedAnswers.map((answer: AttemptResult["attemptedAnswers"][number]) => (
+                <div
+                  key={answer.questionId}
+                  className={`p-4 rounded-lg border ${
+                    answer.isCorrect
+                      ? "border-green-200 bg-green-50"
+                      : "border-red-200 bg-red-50"
+                  }`}
+                >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 mt-1">
                     {answer.isCorrect ? (
@@ -159,7 +173,7 @@ export function ResultPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900 mb-2">
+                    <p className="font-medium text-foreground mb-2">
                       Q{answer.questionId}. {answer.question}
                     </p>
                     <div className="space-y-2 text-sm">
@@ -188,21 +202,31 @@ export function ResultPage() {
               </div>
             ))}
           </div>
+        )}
         </CardContent>
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-4 justify-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Button variant="outline" onClick={() => navigate("/")} className="flex items-center gap-2">
           <Home className="h-4 w-4" />
           Back to Home
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => navigate(`/home/test/${testId}/review/${resultId}`)}
+          disabled={!testId}
+          className="flex items-center gap-2"
+        >
+          <CheckCircle className="h-4 w-4" />
+          Review Results
         </Button>
         <Button
           onClick={() => navigate("/home")}
           className="flex items-center gap-2"
         >
           <RotateCcw className="h-4 w-4" />
-          Take Another Test
+          Retake Test
         </Button>
       </div>
     </div>

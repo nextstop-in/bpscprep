@@ -34,7 +34,7 @@ export function ToppersList() {
                   )}
                 </div>
                 <div>
-                  <p className="font-medium text-sm text-gray-900">{topper.name}</p>
+                  <p className="font-medium text-sm text-foreground">{topper.name}</p>
                   <p className="text-xs text-gray-500">Rank {topper.rank}</p>
                 </div>
               </div>

@@ -21,8 +21,8 @@ type UseQueryOptions<TData> = {
 /**
  * useMutation options type definition
  */
-type UseMutationOptions<TData, TError> = {
-  onSuccess?: (data: TData) => void;
+type UseMutationOptions<TData, TVariables, TError> = {
+  onSuccess?: (data: TData, variables: TVariables) => void;
   onError?: (error: TError) => void;
   retry?: number;
 };
@@ -120,7 +120,7 @@ export function useQuery<TData = unknown>(
  */
 export function useMutation<TData = unknown, TError = Error, TVariables = unknown>(
   mutationFn: (variables: TVariables) => Promise<TData>,
-  options?: UseMutationOptions<TData, TError>
+  options?: UseMutationOptions<TData, TVariables, TError>
 ) {
   const mutation = useTanstackMutation<TData, TError, TVariables>({
     mutationFn,
