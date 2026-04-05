@@ -42,7 +42,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (user && shouldRedirect) {
-      navigate("/dashboard");
+      navigate("/home");
       setShouldRedirect(false);
     }
   }, [user, shouldRedirect, navigate]);

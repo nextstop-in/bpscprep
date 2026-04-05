@@ -198,7 +198,7 @@ export function ResultPage() {
           Back to Home
         </Button>
         <Button
-          onClick={() => navigate("/mock-tests")}
+          onClick={() => navigate("/home")}
           className="flex items-center gap-2"
         >
           <RotateCcw className="h-4 w-4" />

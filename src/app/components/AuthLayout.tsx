@@ -7,9 +7,9 @@ export function AuthLayout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If user is logged in, redirect to dashboard
+    // If user is logged in, redirect to home
     if (user) {
-      navigate("/dashboard");
+      navigate("/home");
     }
   }, [user, navigate]);
 

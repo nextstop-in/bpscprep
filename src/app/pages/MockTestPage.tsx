@@ -313,7 +313,7 @@ export function MockTestPage() {
             {error?.message || "Test not found. Please try again."}
           </p>
         </div>
-        <Button onClick={() => navigate("/dashboard")} className="mt-4">
+        <Button onClick={() => navigate("/home")} className="mt-4">
           Go Back Home
         </Button>
       </div>
@@ -324,7 +324,7 @@ export function MockTestPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">No questions found in this test</p>
-        <Button onClick={() => navigate("/dashboard")} className="mt-4">
+        <Button onClick={() => navigate("/home")} className="mt-4">
           Go Back Home
         </Button>
       </div>
@@ -397,7 +397,7 @@ export function MockTestPage() {
         </Card>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>Back to Dashboard</Button>
+          <Button variant="outline" onClick={() => navigate("/home")}>Back to Home</Button>
           <Button onClick={() => window.location.reload()}>Retake Test</Button>
         </div>
       </div>

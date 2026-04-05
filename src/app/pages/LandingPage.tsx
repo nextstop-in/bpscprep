@@ -117,7 +117,7 @@ export function LandingPage() {
                     <BookOpen className="h-6 w-6" />
                     <span className="text-3xl font-bold">168</span>
                   </div>
-                  <p className="text-sm text-blue-100">Mock Tests</p>
+                  <p className="text-sm text-blue-100">Tests</p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5">
                   <div className="flex items-center gap-3 mb-2">
@@ -203,10 +203,10 @@ export function LandingPage() {
           <div id="tests">
             <div className="text-center mb-10">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Available Mock Tests
+                Available Tests
               </h2>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Preview our collection of BPSC mock tests. Login to start practicing!
+                Preview our collection of BPSC tests. Login to start practicing!
               </p>
             </div>
 
@@ -215,7 +215,7 @@ export function LandingPage() {
                 <div className="inline-block">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
                 </div>
-                <p className="text-gray-600 mt-4">Loading mock tests...</p>
+                <p className="text-gray-600 mt-4">Loading tests...</p>
               </div>
             ) : error ? (
               <div className="bg-red-50 border border-red-200 rounded-lg p-6 flex items-start gap-3">
@@ -291,7 +291,7 @@ export function LandingPage() {
           <DialogHeader>
             <DialogTitle>Login Required</DialogTitle>
             <DialogDescription>
-              Please login or create an account to access mock tests and track your progress.
+              Please login or create an account to access tests and track your progress.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3 pt-4">

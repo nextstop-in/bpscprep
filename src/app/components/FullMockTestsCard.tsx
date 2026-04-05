@@ -29,7 +29,7 @@ export function FullMockTestsCard({ test, isCompleted, onStartTest }: FullMockTe
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
           <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-            Full Mock Test
+            Full Test
           </Badge>
           {isCompleted && (
             <Badge className="bg-green-100 text-green-700 border-green-300">

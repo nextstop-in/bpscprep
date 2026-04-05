@@ -25,11 +25,11 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: "/dashboard",
+    path: "/home",
     Component: Layout,
     children: [
       { index: true, Component: HomePage },
-      { path: "mock-test/:testId", Component: MockTestPage },
+      { path: "test/:testId", Component: MockTestPage },
       { path: "result/:resultId", Component: ResultPage },
     ],
   },

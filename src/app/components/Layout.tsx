@@ -36,13 +36,13 @@ export function Layout() {
             <div
               className="flex items-center gap-3 cursor-pointer"
               onClick={() => {
-                if (location.pathname.includes("/mock-test/")) {
+                if (location.pathname.includes("/test/")) {
                   const shouldLeave = window.confirm(
                     "Your test progress will be lost if you leave. Are you sure you want to go home?"
                   );
                   if (!shouldLeave) return;
                 }
-                navigate("/dashboard");
+                navigate("/home");
               }}
               role="button"
               tabIndex={0}
@@ -83,8 +83,8 @@ export function Layout() {
             <Outlet />
           </div>
 
-          {/* Right Sidebar - Hidden on mock test pages */}
-          {!location.pathname.includes("/mock-test/") && (
+          {/* Right Sidebar - Hidden on test pages */}
+          {!location.pathname.includes("/test/") && (
             <div className="w-80 space-y-6">
               <ToppersList />
               <ImportantTopics />

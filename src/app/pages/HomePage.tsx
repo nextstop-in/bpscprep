@@ -75,7 +75,7 @@ export function HomePage() {
 
     const test = allTests.find((t) => t.id === testId);
     const {weekId=''} = allFetchedTests||{};
-    navigate(`/dashboard/mock-test/${testId}?weekId=${encodeURIComponent(weekId)}`);
+    navigate(`/home/test/${testId}?weekId=${encodeURIComponent(weekId)}`);
   };
 
   // Calculate stats from all available tests
@@ -149,7 +149,7 @@ export function HomePage() {
                 <BookOpen className="h-5 w-5" />
                 <span className="text-2xl font-bold">{totalTests}</span>
               </div>
-              <p className="text-sm text-blue-100">Mock Tests</p>
+              <p className="text-sm text-blue-100">Tests</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
               <div className="flex items-center gap-2 mb-1">
@@ -173,17 +173,17 @@ export function HomePage() {
       <Tabs defaultValue="full-mock" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 max-w-md bg-gradient-to-r from-blue-600 to-purple-600 p-[3px] rounded-xl">
           <TabsTrigger value="full-mock" className="text-white data-[state=active]:bg-white data-[state=active]:text-blue-700">
-            Full Mock Tests
+            Full Tests
           </TabsTrigger>
           <TabsTrigger value="subject-wise" className="text-white data-[state=active]:bg-white data-[state=active]:text-blue-700">
             Subject-wise Tests
           </TabsTrigger>
         </TabsList>
 
-        {/* Full Mock Tests Tab */}
+        {/* Full Tests Tab */}
         <TabsContent value="full-mock" className="space-y-4">
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Full Mock Tests</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Full Tests</h3>
             <p className="text-gray-600">Weekly comprehensive tests covering all subjects</p>
           </div>
 
@@ -203,7 +203,7 @@ export function HomePage() {
         <TabsContent value="subject-wise" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Subject-wise Mock Tests</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Subject-wise Tests</h3>
               <p className="text-gray-600">Practice with weekly topic drills, time-bound simulations, and curriculum-aligned challenges designed to boost confidence and exam readiness.</p>
             </div>
             <div className="flex items-center gap-2">

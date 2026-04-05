@@ -176,7 +176,7 @@ export const ROUTES = {
   root: "/",
   landing: "/",
   login: "/login",
-  dashboard: "/dashboard",
+  home: "/home",
   testStart: "/test/:testId",
   testReview: "/test/:testId/review",
   results: "/results",

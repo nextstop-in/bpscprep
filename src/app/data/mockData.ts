@@ -393,7 +393,7 @@ const generateWeeklyTests = (): MockTest[] => {
     }
   });
 
-  // Generate 21 Full Mock Tests
+  // Generate 21 Full Tests
   for (let week = 1; week <= 21; week++) {
     const allWeekQuestions: Question[] = [];
 
@@ -408,7 +408,7 @@ const generateWeeklyTests = (): MockTest[] => {
 
     tests.push({
       id: `full_mock_${week}`,
-      title: `Full Mock Test - Week ${week}`,
+      title: `Full Test - Week ${week}`,
       subject: "Full Mock",
       duration: 180,
       totalMarks: allWeekQuestions.length * 5,
