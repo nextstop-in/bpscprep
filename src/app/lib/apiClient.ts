@@ -10,24 +10,90 @@ export const apiClient = axios.create({
  * Request interceptor: Add authorization token
  */
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const accessToken = localStorage.getItem("accessToken");
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
 });
 
 /**
- * Response interceptor: Global error handling
+ * Response interceptor: Global error handling and token refresh
  */
+let isRefreshing = false;
+let failedQueue: Array<{
+  onSuccess: (token: string) => void;
+  onError: (error: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.onError(error);
+    } else {
+      prom.onSuccess(token!);
+    }
+  });
+
+  isRefreshing = false;
+  failedQueue = [];
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle 401 (Unauthorized)
-    if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      // Optional: redirect to login
-      console.warn("Unauthorized access - token cleared");
+    const originalRequest = error.config;
+
+    // Handle 401 (Unauthorized) - Try to refresh token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((onSuccess, onError) => {
+          failedQueue.push({ onSuccess, onError });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return apiClient(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (refreshToken) {
+        return apiClient
+          .post("/auth/refresh", { refreshToken })
+          .then((response: any) => {
+            const { accessToken, idToken } = response.data.data;
+            localStorage.setItem("accessToken", accessToken);
+            localStorage.setItem("idToken", idToken);
+
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+            processQueue(null, accessToken);
+            return apiClient(originalRequest);
+          })
+          .catch((err) => {
+            // Refresh failed, clear auth and redirect
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("idToken");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("bpsc_user");
+            processQueue(err, null);
+            // Optionally redirect to login
+            window.location.href = "/login";
+            return Promise.reject(err);
+          });
+      } else {
+        // No refresh token, clear auth
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("idToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("bpsc_user");
+        processQueue(error, null);
+        window.location.href = "/login";
+      }
     }
 
     // Log errors in development

@@ -11,13 +11,15 @@ import { Logo } from "../components/Logo";
 export function LoginPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [signupOTP, setSignupOTP] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [signupStep, setSignupStep] = useState<"credentials" | "otp">("credentials");
+  const [signupEmail_pending, setSignupEmail_pending] = useState("");
 
-  const { login, signup, user } = useAuth();
+  const { login, signup, confirmSignup, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,26 +36,54 @@ export function LoginPage() {
     try {
       await login(loginEmail, loginPassword);
       navigate("/dashboard");
-    } catch (err) {
-      setError("Invalid credentials");
+    } catch (err: any) {
+      setError(err?.message || "Invalid credentials");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
-      await signup(signupName, signupEmail, signupPassword);
-      navigate("/dashboard");
-    } catch (err) {
-      setError("Signup failed");
+      const response = await signup(signupEmail, signupPassword);
+      // OTP sent successfully, move to OTP verification step
+      setSignupEmail_pending(signupEmail);
+      setSignupStep("otp");
+    } catch (err: any) {
+      setError(err?.message || "Signup failed");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOTPSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      await confirmSignup(signupEmail_pending, signupOTP);
+      // OTP confirmed, clear form and redirect
+      setSignupStep("credentials");
+      setSignupEmail("");
+      setSignupPassword("");
+      setSignupOTP("");
+      navigate("/dashboard");
+    } catch (err: any) {
+      setError(err?.message || "OTP verification failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBackToSignup = () => {
+    setSignupStep("credentials");
+    setSignupOTP("");
+    setError("");
   };
 
   return (
@@ -106,7 +136,11 @@ export function LoginPage() {
                       required
                     />
                   </div>
-                  {error && <p className="text-sm text-red-600">{error}</p>}
+                  {error && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+                      {error}
+                    </div>
+                  )}
                   <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" disabled={isLoading}>
                     {isLoading ? "Logging in..." : "Login"}
                   </Button>
@@ -117,51 +151,83 @@ export function LoginPage() {
 
           <TabsContent value="signup">
             <Card>
-              <CardHeader>
-                <CardTitle>Create Account</CardTitle>
-                <CardDescription>Sign up to start your BPSC preparation journey</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="Your Name"
-                      value={signupName}
-                      onChange={(e) => setSignupName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="your.email@example.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  {error && <p className="text-sm text-red-600">{error}</p>}
-                  <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" disabled={isLoading}>
-                    {isLoading ? "Creating account..." : "Sign Up"}
-                  </Button>
-                </form>
-              </CardContent>
+              {signupStep === "credentials" ? (
+                <>
+                  <CardHeader>
+                    <CardTitle>Create Account</CardTitle>
+                    <CardDescription>Sign up to start your BPSC preparation journey</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleSignupSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-email">Email</Label>
+                        <Input
+                          id="signup-email"
+                          type="email"
+                          placeholder="your.email@example.com"
+                          value={signupEmail}
+                          onChange={(e) => setSignupEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-password">Password</Label>
+                        <Input
+                          id="signup-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={signupPassword}
+                          onChange={(e) => setSignupPassword(e.target.value)}
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Password must contain at least one uppercase letter, one number, and one special character</p>
+                      </div>
+                      {error && (
+                        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+                          {error}
+                        </div>
+                      )}
+                      <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" disabled={isLoading}>
+                        {isLoading ? "Sending OTP..." : "Continue"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </>
+              ) : (
+                <>
+                  <CardHeader>
+                    <CardTitle>Verify Email</CardTitle>
+                    <CardDescription>Enter the OTP sent to {signupEmail_pending}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleOTPSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-otp">OTP Code</Label>
+                        <Input
+                          id="signup-otp"
+                          type="text"
+                          placeholder="123456"
+                          value={signupOTP}
+                          onChange={(e) => setSignupOTP(e.target.value)}
+                          maxLength={6}
+                          required
+                        />
+                      </div>
+                      {error && (
+                        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+                          {error}
+                        </div>
+                      )}
+                      <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" disabled={isLoading}>
+                        {isLoading ? "Verifying..." : "Verify OTP"}
+                      </Button>
+                      <Button type="button" variant="outline" className="w-full" onClick={handleBackToSignup} disabled={isLoading}>
+                        Back
+                      </Button>
+                    </form>
+                  </CardContent>
+                </>
+              )}
             </Card>
           </TabsContent>
         </Tabs>
