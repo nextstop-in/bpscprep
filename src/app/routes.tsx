@@ -31,7 +31,7 @@ export const router = createBrowserRouter([
       { index: true, Component: HomePage },
       { path: "test/:testId/review/:reviewResultId", Component: MockTestPage },
       { path: "test/:testId", Component: MockTestPage },
-      { path: "result/:resultId", Component: ResultPage },
+      { path: "result/:testId", Component: ResultPage },
     ],
   },
 ]);

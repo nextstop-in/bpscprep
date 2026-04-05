@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { useQuery } from "../hooks/useApi";
+import { useQuery, useMutation } from "../hooks/useApi";
 import type { Question, MockTest } from "../data/mockData";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -59,7 +59,7 @@ export function MockTestPage() {
   const [searchParams] = useSearchParams();
   const isReviewMode = Boolean(reviewResultId);
   const weekIdFromUrl = searchParams.get('weekId') || undefined;
-
+console.log("Test ID:", testId, "Review Result ID:", reviewResultId, "Week ID from URL:", weekIdFromUrl);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -185,10 +185,24 @@ export function MockTestPage() {
     }
   };
 
+  // Mutation for submitting test attempt to API
+  const { mutate: submitAttempt, loading: isApiSubmitting } = useMutation<any, Error, any>(
+    async (payload) => {
+      const response = await fetch("https://66e2rvyfvj.execute-api.ap-south-1.amazonaws.com/prod/attempt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error("Submission failed");
+      return response.json();
+    }
+  );
+
   const handleSubmitTest = async () => {
     if (!test || !test.questions) return;
 
     setIsSubmitting(true);
+    setSubmissionError("");
 
     const payloadAnswers: Record<string, string> = {};
     test.questions.forEach((question, index) => {
@@ -196,12 +210,13 @@ export function MockTestPage() {
       if (userSelectedIndex !== undefined && userSelectedIndex !== null) {
         payloadAnswers[(index + 1).toString()] = question.options[userSelectedIndex];
       } else {
-        payloadAnswers[(index + 1).toString()] = ""; // Mark unselected questions as empty string
+        payloadAnswers[(index + 1).toString()] = "";
       }
     });
 
     const timeTaken = Math.max(test.duration * 60 - (timeRemaining ?? 0), 0);
     const weekId = weekIdFromUrl || test.weekId || "unknown";
+    
     const attemptPayload = {
       userId: user?.id || "user123",
       testId: test.id,
@@ -210,82 +225,39 @@ export function MockTestPage() {
       timeTaken,
     };
 
-    let submittedToApi = true;
-    let attemptId: string | null = null;
+    submitAttempt(attemptPayload, {
+      onSuccess: (apiResponse) => {
+        console.log("Attempt API response:", apiResponse);
+        
+        // Use API response for the submission result
+        const submissionResult = {
+          apiResponse,
+          weekId,
+          testId: test.id,
+          testTitle: test.title,
+        };
 
-    try {
-      const response = await fetch("https://66e2rvyfvj.execute-api.ap-south-1.amazonaws.com/prod/attempt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(attemptPayload),
-      });
-      if (!response.ok) throw new Error("Submission failed");
-      const responseData = await response.json();
-      attemptId = responseData.attemptId || responseData.id;
-      setSubmissionError("");
-    } catch (error) {
-      submittedToApi = false;
-      setSubmissionError(
-        "Unable to submit test to server. Result will be saved locally."
-      );
-    }
+        // Save to localStorage
+        const existingResults = JSON.parse(localStorage.getItem("bpsc_results") || "[]");
+        localStorage.setItem("bpsc_results", JSON.stringify([...existingResults, submissionResult]));
 
-    if (!attemptId) {
-      attemptId = `local-${Date.now()}`;
-      submittedToApi = false;
-    }
-
-    // Calculate score locally for reference
-    let correctAnswers = 0;
-    const attemptedAnswers = test.questions.map((question, index) => {
-      const selectedIndex = answers[question.id];
-      const attemptedAnswer =
-        selectedIndex !== undefined && selectedIndex !== null
-          ? question.options[selectedIndex]
-          : "";
-      const correctAnswer = question.options[question.correctAnswer] || "";
-      const isCorrect = selectedIndex === question.correctAnswer;
-
-      if (isCorrect) {
-        correctAnswers++;
-      }
-
-      return {
-        questionId: index + 1,
-        question: question.question,
-        attemptedAnswer,
-        correctAnswer,
-        isCorrect,
-      };
+        setIsSubmitting(false);
+        navigate(`/home/result/${test.id}`, {
+          state: {
+            weekId,
+            testId: test.id,
+            submissionResult,
+            apiResponse,
+            testQuestions: test.questions,
+          },
+        });
+      },
+      onError: (error) => {
+        console.error("Error submitting test:", error);
+        setSubmissionError("Unable to submit test to server. Please try again.");
+        setIsSubmitting(false);
+      },
     });
-
-    const unanswered = test.questions.filter(
-      (question) => answers[question.id] === undefined || answers[question.id] === null
-    ).length;
-    const wrongAnswers = Math.max(0, test.questions.length - correctAnswers - unanswered);
-    const score = (correctAnswers / (test.questions.length || 1)) * 100;
-
-    const submissionResult = {
-      score,
-      correctAnswers,
-      wrongAnswers,
-      unanswered,
-      totalQuestions: test.questions.length,
-      attemptId,
-      submittedToApi,
-      testId: test.id,
-      testTitle: test.title,
-      answers: payloadAnswers,
-      attemptedAnswers,
-      timeTaken,
-      date: new Date().toISOString(),
-    };
-
-    const existingResults = JSON.parse(localStorage.getItem("bpsc_results") || "[]");
-    localStorage.setItem("bpsc_results", JSON.stringify([...existingResults, submissionResult]));
-
-    setIsSubmitting(false);
-    navigate(`/home/result/${attemptId}`);
   };
 
   const formatTime = (seconds: number | null) => {
@@ -611,7 +583,7 @@ export function MockTestPage() {
               {!isReviewMode && (
                 <Button
                   onClick={handleSubmitTest}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || answeredCount === 0}
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle className="h-4 w-4" />
@@ -660,7 +632,7 @@ export function MockTestPage() {
                   <button
                     key={q.id}
                     onClick={() => setCurrentQuestionIndex(index)}
-                    className={`w-8 h-8 rounded border font-medium transition-colors text-xs ${
+                    className={`w-8 h-8 rounded border font-medium transition-colors text-xs cursor-pointer ${
                       index === currentQuestionIndex
                         ? "border-blue-500 bg-blue-500 text-white"
                         : answers[q.id] !== undefined

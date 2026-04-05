@@ -1,11 +1,9 @@
-import { useEffect, useMemo } from "react";
-import { useNavigate, useParams } from "react-router";
-import { useQuery } from "../hooks/useApi";
+import { useState } from "react";
+import { useNavigate, useParams, useLocation } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
-import { CheckCircle, XCircle, Home, RotateCcw, TrendingUp, Loader2 } from "lucide-react";
 import { Progress } from "../components/ui/progress";
+import { RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 
 export interface AttemptResult {
   score: number;
@@ -24,210 +22,248 @@ export interface AttemptResult {
 }
 
 export function ResultPage() {
-  const { resultId } = useParams();
+  const { testId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Fetch attempt result from API using new useQuery pattern
-  const { data: apiResult, loading, error } = useQuery<AttemptResult>(
-    `/attempt/${resultId}`,
-    {},
-    { enabled: !!resultId }
-  );
+  const { submissionResult, weekId, apiResponse, testQuestions } = location.state || {};
+  
+  console.log("Result Page - testId:", testId, "weekId:", weekId, "submissionResult:", submissionResult, "apiResponse:", apiResponse);
+  console.log("Result Page - first test question:", testQuestions);
+  
+  // Use apiResponse if available, otherwise fall back to submissionResult
+  const responseData = apiResponse || submissionResult?.apiResponse;
+  
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
-  const fallbackResult = useMemo(() => {
-    if (!resultId) return null;
-    const stored = JSON.parse(localStorage.getItem("bpsc_results") || "[]");
-    return stored.find((item: any) => item.attemptId === resultId) || null;
-  }, [resultId]);
-
-  const resultData = apiResult || fallbackResult;
-  const resultError = error && !fallbackResult ? error : undefined;
-  const isLoadingResult = loading && !fallbackResult;
-
-  if (isLoadingResult) {
+  if (!responseData && !submissionResult) {
     return (
       <div className="text-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-        <p className="text-gray-600">Loading your results...</p>
-      </div>
-    );
-  }
-
-  if (resultError || !resultData) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">{resultError?.message || "Result not found"}</p>
-        <Button onClick={() => navigate("/")} className="mt-4">
+        <p className="text-gray-500">Result not found</p>
+        <Button onClick={() => navigate("/home")} className="mt-4">
           Go Back Home
         </Button>
       </div>
     );
   }
 
-  const { score, correct, wrong, unanswered, testTitle, testId, attemptedAnswers: rawAttemptedAnswers } = resultData as AttemptResult & { attemptedAnswers?: any };
-  const attemptedAnswers = rawAttemptedAnswers ?? [];
-  const totalQuestions = correct + wrong + unanswered;
+  // Extract data from API response or submission result
+  const score = responseData?.score ?? submissionResult?.score ?? 0;
+  const attemptedAnswers = responseData?.attemptedAnswers ?? submissionResult?.attemptedAnswers ?? [];
 
-  const getPerformanceMessage = (score: number) => {
-    if (score >= 90) return { message: "Outstanding!", color: "text-green-600" };
-    if (score >= 75) return { message: "Excellent Work!", color: "text-blue-600" };
-    if (score >= 60) return { message: "Good Job!", color: "text-yellow-600" };
-    return { message: "Review Your Answers", color: "text-red-600" };
-  };
+  if (!attemptedAnswers || attemptedAnswers.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">No answers found in result</p>
+        <Button onClick={() => navigate("/home")} className="mt-4">
+          Go Back Home
+        </Button>
+      </div>
+    );
+  }
 
-  const performance = getPerformanceMessage(score);
+  const questions = Array.isArray(testQuestions) ? testQuestions : [];
+  const totalQuestions = questions.length || attemptedAnswers.length;
+  const answerMap = new Map<number, AttemptResult["attemptedAnswers"][number]>();
+  attemptedAnswers.forEach((answer: any) => answerMap.set(answer.questionId, answer));
+
+  const currentQuestion = questions[currentQuestionIndex];
+  const questionKey = currentQuestion
+    ? typeof currentQuestion.id === "number"
+      ? currentQuestion.id
+      : currentQuestionIndex + 1
+    : currentQuestionIndex + 1;
+  const currentAnswer = answerMap.get(questionKey) ?? answerMap.get(currentQuestionIndex + 1);
+
+  const selectedOption = currentAnswer?.attemptedAnswer || "";
+  const correctAnswerIndex = typeof currentQuestion?.correctAnswer === "number"
+    ? currentQuestion.correctAnswer
+    : Number(currentQuestion?.correctAnswer);
+  const correctOption = typeof correctAnswerIndex === "number" && !Number.isNaN(correctAnswerIndex)
+    ? currentQuestion?.options?.[correctAnswerIndex]
+    : currentAnswer?.correctAnswer;
+  const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+  const questionStatus = currentAnswer?.attemptedAnswer
+    ? currentAnswer.isCorrect
+      ? "Correct"
+      : "Wrong"
+    : "Unanswered";
+  const questionBadgeClass = questionStatus === "Correct"
+    ? "bg-green-100 text-green-700 border border-green-200"
+    : questionStatus === "Wrong"
+      ? "bg-red-100 text-red-700 border border-red-200"
+      : "bg-gray-100 text-gray-600 border border-gray-200";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <CardContent className="p-8 text-center">
-          <div className="mb-4">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full mb-4">
-              <TrendingUp className="h-10 w-10 text-blue-600" />
+        <CardContent className="p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold mb-1">Your Results</h2>
+              <p className="text-blue-100">
+                Question {currentQuestionIndex + 1} of {totalQuestions}
+              </p>
             </div>
-          </div>
-          <h2 className="text-3xl font-bold mb-2">Test Completed!</h2>
-          <p className="text-blue-100">{testTitle}</p>
-        </CardContent>
-      </Card>
-
-      {/* Score Card */}
-      <Card>
-        <CardContent className="p-8">
-          <div className="text-center mb-6">
-            <div className={`text-6xl font-bold mb-2 ${performance.color}`}>
-              {score.toFixed(2)}
-            </div>
-            <p className="text-sm text-gray-500 mb-2">Raw Score</p>
-            <p className={`text-xl font-medium ${performance.color}`}>{performance.message}</p>
-          </div>
-
-          <div className="grid grid-cols-4 gap-4 text-center">
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="text-2xl font-bold text-green-600">
-                  {correct}
-                </span>
+            <div className="text-right">
+              <div className="text-4xl font-bold mb-1 text-white">
+                {score.toFixed(2)}
               </div>
-              <p className="text-sm text-gray-600">Correct</p>
-            </div>
-
-            <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <XCircle className="h-5 w-5 text-red-600" />
-                <span className="text-2xl font-bold text-red-600">{wrong}</span>
-              </div>
-              <p className="text-sm text-gray-600">Wrong</p>
-            </div>
-
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="text-2xl font-bold text-gray-600">
-                  {unanswered}
-                </span>
-              </div>
-              <p className="text-sm text-gray-600">Unanswered</p>
-            </div>
-
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="text-2xl font-bold text-blue-600">
-                  {totalQuestions}
-                </span>
-              </div>
-              <p className="text-sm text-gray-600">Total</p>
+              <p className="text-blue-100 text-sm">Score</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Detailed Results */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Detailed Results</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {attemptedAnswers.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-              Detailed answer review is not available for this result.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {attemptedAnswers.map((answer: AttemptResult["attemptedAnswers"][number]) => (
-                <div
-                  key={answer.questionId}
-                  className={`p-4 rounded-lg border ${
-                    answer.isCorrect
-                      ? "border-green-200 bg-green-50"
-                      : "border-red-200 bg-red-50"
-                  }`}
-                >
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-1">
-                    {answer.isCorrect ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground mb-2">
-                      Q{answer.questionId}. {answer.question}
-                    </p>
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <span className="font-medium">Your Answer:</span>{" "}
-                        <span
-                          className={answer.isCorrect ? "text-green-700" : "text-red-700"}
-                        >
-                          {answer.attemptedAnswer}
-                        </span>
-                      </p>
-                      {!answer.isCorrect && (
-                        <p>
-                          <span className="font-medium">Correct Answer:</span>{" "}
-                          <span className="text-green-700">
-                            {answer.correctAnswer}
-                          </span>
-                        </p>
-                      )}
+      {/* Progress */}
+      <div>
+        <div className="flex justify-between text-sm text-gray-600 mb-2">
+          <span>Progress</span>
+          <span>
+            {currentQuestionIndex + 1} of {totalQuestions} reviewed
+          </span>
+        </div>
+        <Progress value={progress} className="h-2" />
+      </div>
+
+      {/* Main Content - Two Column Layout (60/40) */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Left Column - Question (3 cols = 60%) */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* Question */}
+          <Card>
+            <CardHeader>
+              <div className="mb-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-700">
+                <span className={`${questionBadgeClass} px-2 py-1 rounded-full text-[11px] font-semibold`}>{questionStatus}</span>
+              </div>
+              <CardTitle className="text-lg">
+                Q{currentQuestionIndex + 1}. {currentQuestion?.question || currentAnswer?.question}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {currentQuestion?.options?.map((option: string, optionIndex: number) => {
+                  const isSelected = selectedOption === option;
+                  const isCorrectOption = correctOption === option;
+                  const isWrongSelected = isSelected && selectedOption && selectedOption !== correctOption;
+                  const isMarkedCorrect = isCorrectOption && (!selectedOption || selectedOption !== option || isSelected);
+
+                  const baseClasses =
+                    "rounded-lg border p-4 text-sm transition-colors flex items-center justify-between";
+                  const styleClass = isSelected && isCorrectOption
+                    ? "border-green-400 bg-green-50 text-green-700"
+                    : isWrongSelected
+                      ? "border-red-400 bg-red-50 text-red-700"
+                      : isCorrectOption && selectedOption && selectedOption !== option
+                        ? "border-green-400 bg-green-50 text-green-700"
+                        : "border-gray-200 bg-white text-gray-900";
+
+                  return (
+                    <div key={optionIndex} className={`${baseClasses} ${styleClass}`}>
+                      <span>{option}</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide">
+                        {isSelected && "Your Answer"}
+                        {!isSelected && isCorrectOption && selectedOption && "Correct"}
+                      </span>
                     </div>
-                  </div>
-                  <Badge variant={answer.isCorrect ? "default" : "destructive"}>
-                    {answer.isCorrect ? "Correct" : "Incorrect"}
-                  </Badge>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between items-center">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+              disabled={currentQuestionIndex === 0}
+              className="flex items-center gap-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+
+            <div className="flex gap-3">
+              {currentQuestionIndex < attemptedAnswers.length - 1 ? (
+                <Button onClick={() => setCurrentQuestionIndex(prev => prev + 1)} className="flex items-center gap-2">
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              ) : null}
+
+              <Button
+                onClick={() => navigate(`/home/test/${testId}?weekId=${encodeURIComponent(weekId)}`)}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Retake Test
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Sidebar - Question Navigation (2 cols = 40%) */}
+        <div className="lg:col-span-2">
+          <Card className="sticky top-6">
+            <CardHeader>
+              <CardTitle className="text-sm">Questions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-8 lg:grid-cols-10 gap-1">
+                {Array.from({ length: totalQuestions }).map((_, index) => {
+                  const question = questions[index];
+                  const questionKey = question
+                    ? typeof question.id === "number"
+                      ? question.id
+                      : index + 1
+                    : index + 1;
+                  const answer = answerMap.get(questionKey) ?? answerMap.get(index + 1);
+                  const isUnanswered = !answer?.attemptedAnswer;
+                  const isCorrect = Boolean(answer?.isCorrect);
+                  const isWrong = Boolean(answer?.attemptedAnswer && !answer?.isCorrect);
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentQuestionIndex(index)}
+                      className={`w-8 h-8 rounded border font-medium transition-colors text-xs cursor-pointer ${
+                        index === currentQuestionIndex
+                          ? "border-blue-500 bg-blue-500 text-white"
+                          : isUnanswered
+                          ? "border-gray-300 bg-gray-50 text-gray-700"
+                          : isCorrect
+                          ? "border-green-500 bg-green-50 text-green-700"
+                          : "border-red-500 bg-red-50 text-red-700"
+                      }`}
+                    >
+                      {index + 1}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-3 pt-3 border-t space-y-1 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded border-2 border-blue-500 bg-blue-500"></div>
+                  <span className="text-gray-700">Current</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded border-2 border-green-500 bg-green-50"></div>
+                  <span className="text-gray-700">Correct</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded border-2 border-red-500 bg-red-50"></div>
+                  <span className="text-gray-700">Wrong</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded border-2 border-gray-300 bg-gray-50"></div>
+                  <span className="text-gray-700">Unanswered</span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-        </CardContent>
-      </Card>
-
-      {/* Action Buttons */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-        <Button variant="outline" onClick={() => navigate("/")} className="flex items-center gap-2">
-          <Home className="h-4 w-4" />
-          Back to Home
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => navigate(`/home/test/${testId}/review/${resultId}`)}
-          disabled={!testId}
-          className="flex items-center gap-2"
-        >
-          <CheckCircle className="h-4 w-4" />
-          Review Results
-        </Button>
-        <Button
-          onClick={() => navigate("/home")}
-          className="flex items-center gap-2"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Retake Test
-        </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

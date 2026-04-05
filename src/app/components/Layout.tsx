@@ -83,8 +83,8 @@ export function Layout() {
             <Outlet />
           </div>
 
-          {/* Right Sidebar - Hidden on test pages */}
-          {!location.pathname.includes("/test/") && (
+          {/* Right Sidebar - Hidden on test and result pages */}
+          {!location.pathname.includes("/test/") && !location.pathname.includes("/result/") && (
             <div className="w-80 space-y-6">
               <ToppersList />
               <ImportantTopics />
