@@ -62,6 +62,24 @@ export function MockTestPage() {
   const [submissionError, setSubmissionError] = useState<string>("");
   const [result, setResult] = useState<SubmissionResult | null>(null);
 
+  useEffect(() => {
+    if (result) return;
+
+    const warningMessage = "You have an unfinished test. Leaving now will discard your progress.";
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = warningMessage;
+      return warningMessage;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [result]);
+
   // Fetch test details directly from API using new useQuery pattern
   const { data: testDetails, loading: isLoading, error } = useQuery<any | ApiTestDetail>(
     `/tests/${testId}`,

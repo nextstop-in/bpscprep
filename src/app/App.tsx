@@ -20,7 +20,21 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <RouterProvider router={router} />
+          <div className="min-h-screen flex flex-col">
+            <main className="flex-1">
+              <RouterProvider router={router} />
+            </main>
+            <footer className="border-t border-slate-800 bg-slate-950 text-slate-300 py-6">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm">© {new Date().getFullYear()} bpscprep.in — Trusted BPSC preparation content.</p>
+                <div className="flex flex-wrap gap-4 text-sm text-slate-400">
+                  <span>Privacy</span>
+                  <span>Terms</span>
+                  <span>Support</span>
+                </div>
+              </div>
+            </footer>
+          </div>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

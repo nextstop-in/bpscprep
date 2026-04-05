@@ -23,9 +23,22 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const getStoredAuth = () => {
+    const storedUser = localStorage.getItem("bpsc_user");
+    const storedAccessToken = sessionStorage.getItem("accessToken");
+    if (storedUser && storedAccessToken) {
+      return {
+        user: JSON.parse(storedUser) as User,
+        accessToken: storedAccessToken,
+      };
+    }
+    return { user: null, accessToken: null };
+  };
+
+  const storedAuth = getStoredAuth();
+  const [user, setUser] = useState<User | null>(storedAuth.user);
+  const [accessToken, setAccessToken] = useState<string | null>(storedAuth.accessToken);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Initialize hooks
   const loginMutation = useMutation(
