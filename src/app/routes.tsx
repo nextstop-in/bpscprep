@@ -3,6 +3,7 @@ import { HomePage } from "./pages/HomePage";
 import { MockTestPage } from "./pages/MockTestPage";
 import { ResultPage } from "./pages/ResultPage";
 import { LoginPage } from "./pages/LoginPage";
+import { SignupPage } from "./pages/SignupPage";
 import { LandingPage } from "./pages/LandingPage";
 import { Layout } from "./components/Layout";
 import { AuthLayout } from "./components/AuthLayout";
@@ -11,6 +12,10 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     Component: LoginPage,
+  },
+  {
+    path: "/signup",
+    Component: SignupPage,
   },
   {
     path: "/",

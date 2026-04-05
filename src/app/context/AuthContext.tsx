@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router";
+import { useMutation } from "../hooks/useApi";
 import * as authService from "../lib/authService";
 
 interface User {
@@ -14,6 +15,7 @@ interface AuthContextType {
   signup: (email: string, password: string) => Promise<{ message: string; user: string }>;
   confirmSignup: (email: string, code: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => void;
   isLoading: boolean;
   accessToken: string | null;
 }
@@ -25,14 +27,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  // Initialize hooks
+  const loginMutation = useMutation(
+    async ({ email, password }: { email: string; password: string }) =>
+      authService.login(email, password),
+    {
+      onSuccess: (data) => {
+        // Store tokens in sessionStorage
+        sessionStorage.setItem("accessToken", data.data.accessToken);
+        sessionStorage.setItem("idToken", data.data.idToken);
+        sessionStorage.setItem("refreshToken", data.data.refreshToken);
+
+        // Create user object
+        const userData = {
+          id: email,
+          name: email.split("@")[0],
+          email,
+        };
+
+        setUser(userData);
+        setAccessToken(sessionStorage.getItem("accessToken"));
+      },
+    }
+  );
+  const signupMutation = useMutation(
+    async ({ email, password }: { email: string; password: string }) =>
+      authService.sendSignupOTP(email, password)
+  );
+  const confirmOTPMutation = useMutation(
+    async ({ email, code }: { email: string; code: string }) =>
+      authService.confirmOTP(email, code),
+    {
+      onSuccess: (data, variables) => {
+        // Create user object after successful OTP confirmation
+        const userData = {
+          id: variables.email,
+          name: variables.email.split("@")[0],
+          email: variables.email,
+        };
+
+        setUser(userData);
+        localStorage.setItem("bpsc_user", JSON.stringify(userData));
+      },
+    }
+  );
+  const refreshTokenMutation = useMutation(
+    async (refreshToken: string) =>
+      authService.refreshAccessToken(refreshToken),
+    {
+      onSuccess: (data) => {
+        // Update tokens in sessionStorage
+        sessionStorage.setItem("accessToken", data.data.accessToken);
+        sessionStorage.setItem("idToken", data.data.idToken);
+      },
+    }
+  );
+
+  const refreshUser = () => {
     // Check if user is already logged in
     const storedUser = localStorage.getItem("bpsc_user");
-    const storedAccessToken = localStorage.getItem("accessToken");
+    const storedAccessToken = sessionStorage.getItem("accessToken");
     if (storedUser && storedAccessToken) {
       setUser(JSON.parse(storedUser));
       setAccessToken(storedAccessToken);
+    } else {
+      setUser(null);
+      setAccessToken(null);
     }
+  };
+
+  useEffect(() => {
+    refreshUser();
     setIsLoading(false);
   }, []);
 
@@ -57,23 +122,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await authService.login(email, password);
-      
-      // Store tokens
-      localStorage.setItem("accessToken", response.data.accessToken);
-      localStorage.setItem("idToken", response.data.idToken);
-      localStorage.setItem("refreshToken", response.data.refreshToken);
-      
+      await loginMutation.mutateAsync({ email, password });
       // Create user object from email
       const userData = {
         id: email, // Use email as unique ID
         name: email.split("@")[0],
         email,
       };
-      
+
       setUser(userData);
-      setAccessToken(response.data.accessToken);
-      localStorage.setItem("bpsc_user", JSON.stringify(userData));
+      setAccessToken(sessionStorage.getItem("accessToken"));
     } catch (error: any) {
       const message = getErrorMessage(error);
       console.error("Login failed:", error);
@@ -85,9 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (email: string, password: string) => {
     try {
-      const response = await authService.sendSignupOTP(email, password);
+      const response = await signupMutation.mutateAsync({ email, password });
       // OTP has been sent, return the response for the caller to handle
-      return response.data;
+      return response;
     } catch (error: any) {
       const message = getErrorMessage(error);
       console.error("Signup failed:", error);
@@ -99,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const confirmSignup = async (email: string, code: string) => {
     try {
-      await authService.confirmOTP(email, code);
+      await confirmOTPMutation.mutateAsync({ email, code });
       // After confirming OTP, create mock user (actual login will happen separately)
       const userData = {
         id: email,
@@ -107,7 +165,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
       };
       setUser(userData);
-      localStorage.setItem("bpsc_user", JSON.stringify(userData));
     } catch (error: any) {
       const message = getErrorMessage(error);
       console.error("OTP confirmation failed:", error);
@@ -121,13 +178,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setAccessToken(null);
     localStorage.removeItem("bpsc_user");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("idToken");
-    localStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("idToken");
+    sessionStorage.removeItem("refreshToken");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, confirmSignup, logout, isLoading, accessToken }}>
+    <AuthContext.Provider value={{ user, login, signup, confirmSignup, logout, refreshUser, isLoading, accessToken }}>
       {children}
     </AuthContext.Provider>
   );

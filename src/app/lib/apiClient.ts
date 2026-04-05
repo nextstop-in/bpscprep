@@ -10,7 +10,7 @@ export const apiClient = axios.create({
  * Request interceptor: Add authorization token
  */
 apiClient.interceptors.request.use((config) => {
-  const accessToken = localStorage.getItem("accessToken");
+  const accessToken = sessionStorage.getItem("accessToken");
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
@@ -67,8 +67,8 @@ apiClient.interceptors.response.use(
           .post("/auth/refresh", { refreshToken })
           .then((response: any) => {
             const { accessToken, idToken } = response.data.data;
-            localStorage.setItem("accessToken", accessToken);
-            localStorage.setItem("idToken", idToken);
+            sessionStorage.setItem("accessToken", accessToken);
+            sessionStorage.setItem("idToken", idToken);
 
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
             processQueue(null, accessToken);
@@ -76,9 +76,9 @@ apiClient.interceptors.response.use(
           })
           .catch((err) => {
             // Refresh failed, clear auth and redirect
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("idToken");
-            localStorage.removeItem("refreshToken");
+            sessionStorage.removeItem("accessToken");
+            sessionStorage.removeItem("idToken");
+            sessionStorage.removeItem("refreshToken");
             localStorage.removeItem("bpsc_user");
             processQueue(err, null);
             // Optionally redirect to login
@@ -87,9 +87,9 @@ apiClient.interceptors.response.use(
           });
       } else {
         // No refresh token, clear auth
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("idToken");
-        localStorage.removeItem("refreshToken");
+        sessionStorage.removeItem("accessToken");
+        sessionStorage.removeItem("idToken");
+        sessionStorage.removeItem("refreshToken");
         localStorage.removeItem("bpsc_user");
         processQueue(error, null);
         window.location.href = "/login";
